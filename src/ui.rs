@@ -12,19 +12,12 @@ use crate::{app::App, board::Board};
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
-        .constraints(
-            [
-                Constraint::Length(3),
-                Constraint::Length(2 * 8 + 1),
-                Constraint::Length(3),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Length(3), Constraint::Min(2 * 8 + 1)].as_ref())
         .split(f.size());
 
     draw_menu(f, app, chunks[0]);
     draw_board(f, app, chunks[1]);
-    draw_console(f, app, chunks[2]);
+    // draw_console(f, app, chunks[2]);
 }
 
 pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
