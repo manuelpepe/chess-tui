@@ -1,11 +1,10 @@
-use std::{error, fmt::Display};
+use std::fmt::Display;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use thiserror::Error;
 use tui::{
     layout::Constraint,
-    style::{Color, Modifier, Style},
-    text::Span,
+    style::{Color, Style},
     widgets::{Block, Borders, Cell, Row, Table, Widget},
 };
 

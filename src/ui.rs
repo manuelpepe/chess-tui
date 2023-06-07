@@ -4,7 +4,7 @@ use tui::{
     style::{Color, Modifier, Style},
     symbols::DOT,
     text::{Span, Spans},
-    widgets::{Block, Borders, Tabs},
+    widgets::{Block, Borders, Paragraph, Tabs, Wrap},
     Frame,
 };
 
@@ -16,7 +16,11 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .split(f.size());
 
     draw_menu(f, app, chunks[0]);
-    draw_board(f, app, chunks[1]);
+    match app.tabs.index {
+        0 => draw_board(f, app, chunks[1]),
+        1 => draw_help(f, app, chunks[1]),
+        _ => {}
+    }
     // draw_console(f, app, chunks[2]);
 }
 
@@ -50,4 +54,20 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 
 pub fn draw_console<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     return;
+}
+
+pub fn draw_help<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    let block = Block::default().title("Help").borders(Borders::ALL);
+    let text = vec![
+        Spans::from(vec![
+            Span::styled("q", Style::default().fg(Color::Yellow)),
+            Span::raw(" - Quit\n"),
+        ]),
+        Spans::from(vec![
+            Span::styled("<TAB>", Style::default().fg(Color::Yellow)),
+            Span::raw(" - Next window"),
+        ]),
+    ];
+    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
+    f.render_widget(paragraph, area)
 }
