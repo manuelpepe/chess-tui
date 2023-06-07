@@ -1,5 +1,7 @@
-use std::fmt::Display;
+use std::{error, fmt::Display};
 
+use anyhow::{bail, Result};
+use thiserror::Error;
 use tui::{
     layout::Constraint,
     style::{Color, Modifier, Style},
@@ -40,24 +42,44 @@ impl Piece {
             Piece::BlackPawn => 0x265F,
         }
     }
+
+    pub fn from_fen(ch: char) -> Option<Piece> {
+        match ch {
+            'k' => Some(Piece::BlackKing),
+            'q' => Some(Piece::BlackQueen),
+            'r' => Some(Piece::BlackRook),
+            'b' => Some(Piece::BlackBishop),
+            'n' => Some(Piece::BlackKnight),
+            'p' => Some(Piece::BlackPawn),
+            'K' => Some(Piece::WhiteKing),
+            'Q' => Some(Piece::WhiteQueen),
+            'R' => Some(Piece::WhiteRook),
+            'B' => Some(Piece::WhiteBishop),
+            'N' => Some(Piece::WhiteKnight),
+            'P' => Some(Piece::WhitePawn),
+            _ => None,
+        }
+    }
 }
 
-impl From<u8> for Piece {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for Piece {
+    type Error = ParsingError;
+
+    fn try_from(value: u8) -> Result<Self, ParsingError> {
         match value {
-            0b00000001 => Piece::WhiteKing,
-            0b00000010 => Piece::WhiteQueen,
-            0b00000100 => Piece::WhiteRook,
-            0b00001000 => Piece::WhiteBishop,
-            0b00010000 => Piece::WhiteKnight,
-            0b00100000 => Piece::WhitePawn,
-            0b01000001 => Piece::BlackKing,
-            0b01000010 => Piece::BlackQueen,
-            0b01000100 => Piece::BlackRook,
-            0b01001000 => Piece::BlackBishop,
-            0b01010000 => Piece::BlackKnight,
-            0b01100000 => Piece::BlackPawn,
-            _ => panic!("unkown piece encoding"),
+            0b00000001 => Ok(Piece::WhiteKing),
+            0b00000010 => Ok(Piece::WhiteQueen),
+            0b00000100 => Ok(Piece::WhiteRook),
+            0b00001000 => Ok(Piece::WhiteBishop),
+            0b00010000 => Ok(Piece::WhiteKnight),
+            0b00100000 => Ok(Piece::WhitePawn),
+            0b01000001 => Ok(Piece::BlackKing),
+            0b01000010 => Ok(Piece::BlackQueen),
+            0b01000100 => Ok(Piece::BlackRook),
+            0b01001000 => Ok(Piece::BlackBishop),
+            0b01010000 => Ok(Piece::BlackKnight),
+            0b01100000 => Ok(Piece::BlackPawn),
+            _ => Err(ParsingError::PieceEncodingError),
         }
     }
 }
@@ -97,6 +119,52 @@ impl Display for Piece {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum ParsingError {
+    #[error("error parsing fen")]
+    ErrorParsingFEN,
+
+    #[error("piece encoding error")]
+    PieceEncodingError,
+}
+
+#[derive(Clone, Debug)]
+pub struct BoardState {
+    pub board: [u8; 64],
+    pub white_to_move: bool,
+}
+
+impl BoardState {
+    pub fn from_fen(value: String) -> Result<Self> {
+        // TODO: Finish parsing fen, only position is parsed for now
+        let mut board = [0u8; 64];
+        let position = value
+            .split_whitespace()
+            .nth(0)
+            .ok_or_else(|| ParsingError::ErrorParsingFEN)?
+            .chars();
+        let mut ix = 0;
+        for ch in position.into_iter() {
+            if ch == '/' {
+                continue;
+            }
+            if ch.is_numeric() {
+                let skip = ch.to_digit(10).unwrap();
+                ix += skip as usize;
+                continue;
+            }
+            if let Some(piece) = Piece::from_fen(ch) {
+                board[ix] = piece.into();
+            }
+            ix += 1;
+        }
+        Ok(BoardState {
+            board: board,
+            white_to_move: true,
+        })
+    }
+}
+
 pub struct Board {}
 
 impl Board {
@@ -110,54 +178,9 @@ impl Widget for Board {
         if area.area() == 0 {
             return;
         }
-
-        let board_data = vec![
-            vec![
-                Piece::BlackRook,
-                Piece::BlackKnight,
-                Piece::BlackBishop,
-                Piece::BlackQueen,
-                Piece::BlackKing,
-                Piece::BlackBishop,
-                Piece::BlackKnight,
-                Piece::BlackRook,
-            ],
-            vec![
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-                Piece::BlackPawn,
-            ],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-                Piece::WhitePawn,
-            ],
-            vec![
-                Piece::WhiteRook,
-                Piece::WhiteKnight,
-                Piece::WhiteBishop,
-                Piece::WhiteQueen,
-                Piece::WhiteKing,
-                Piece::WhiteBishop,
-                Piece::WhiteKnight,
-                Piece::WhiteRook,
-            ],
-        ];
-
+        let board_data =
+            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
+                .unwrap(); // FIXME: unwrap
         let mut rows = Vec::with_capacity(8);
         for i in 0..8 {
             let mut row = Vec::with_capacity(8);
@@ -167,9 +190,9 @@ impl Widget for Board {
                     i if i % 2 == 0 => Style::default().bg(Color::White),
                     _ => panic!("invalid remainder"),
                 };
-                let piece = match board_data[i].get(j) {
-                    Some(p) => p.to_string(),
-                    None => String::new(),
+                let piece = match Piece::try_from(board_data.board[i * 8 + j]) {
+                    Ok(p) => p.to_string(),
+                    Err(_e) => String::new(), // FIXME: Should report error
                 };
                 let cell = Cell::from(format!("{}", piece)).style(style);
                 row.push(cell);
