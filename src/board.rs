@@ -187,7 +187,7 @@ impl Widget for Board {
             for j in 0..8 {
                 let style = match i + j {
                     i if i % 2 != 0 => Style::default().bg(Color::DarkGray),
-                    i if i % 2 == 0 => Style::default().bg(Color::White),
+                    i if i % 2 == 0 => Style::default().bg(Color::Gray),
                     _ => panic!("invalid remainder"),
                 };
                 let piece = match Piece::try_from(board_data.board[i * 8 + j]) {
