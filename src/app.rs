@@ -1,16 +1,34 @@
+use tui::style::Style;
+use tui_textarea::TextArea;
+
+use crate::board::Board;
+
 pub struct App<'a> {
     pub title: String,
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
+    pub board: Board,
+    pub console: TextArea<'a>,
+    pub in_console: bool,
 }
 
 impl<'a> App<'a> {
     pub fn new() -> App<'a> {
+        let mut ta = TextArea::default();
+        ta.set_cursor_line_style(Style::default());
+        ta.insert_str("> ");
         App {
             title: "Chess TUI".to_string(),
             should_quit: false,
             tabs: TabsState::new(vec!["Board", "Help"]),
+            board: Board::new(),
+            console: ta,
+            in_console: false,
         }
+    }
+
+    pub fn set_position(&mut self, fen: String) {
+        self.board = Board::from_fen(fen)
     }
 
     pub fn on_next_tab(&mut self) {
@@ -28,6 +46,10 @@ impl<'a> App<'a> {
     pub fn on_key(&mut self, c: char) {
         match c {
             'q' => self.should_quit = true,
+            'p' => self.set_position(
+                "r2qk2r/pp3ppp/B1nbpn2/2pp1b2/Q2P1B2/2P1PN2/PP1N1PPP/R3K2R b KQkq - 4 8"
+                    .to_string(),
+            ),
             _ => {}
         }
     }

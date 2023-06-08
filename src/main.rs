@@ -26,7 +26,8 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let app = App::new();
+    let mut app = App::new();
+    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string());
     let res = run_app(&mut terminal, app, tick_rate);
 
     disable_raw_mode()?;

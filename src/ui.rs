@@ -8,20 +8,26 @@ use tui::{
     Frame,
 };
 
-use crate::{app::App, board::Board};
+use crate::app::App;
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
-        .constraints([Constraint::Length(3), Constraint::Min(2 * 8 + 1)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(3),
+                Constraint::Min(2 * 8 + 1),
+                Constraint::Length(3),
+            ]
+            .as_ref(),
+        )
         .split(f.size());
-
     draw_menu(f, app, chunks[0]);
     match app.tabs.index {
         0 => draw_board(f, app, chunks[1]),
         1 => draw_help(f, app, chunks[1]),
         _ => {}
     }
-    // draw_console(f, app, chunks[2]);
+    draw_console(f, app, chunks[2]);
 }
 
 pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
@@ -48,15 +54,17 @@ pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 }
 
 pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
-    let board = Board::new();
-    f.render_widget(board, area);
+    f.render_widget(app.board, area);
 }
 
 pub fn draw_console<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
-    return;
+    let block = Block::default().title("Console").borders(Borders::ALL);
+    app.console.set_block(block);
+    let widget = app.console.widget();
+    f.render_widget(widget, area)
 }
 
-pub fn draw_help<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     let block = Block::default().title("Help").borders(Borders::ALL);
     let text = vec![
         Spans::from(vec![

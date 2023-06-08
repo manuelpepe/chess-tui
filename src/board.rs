@@ -8,7 +8,7 @@ use tui::{
     widgets::{Block, Borders, Cell, Row, Table, Widget},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Piece {
     WhiteKing,
     WhiteQueen,
@@ -127,7 +127,7 @@ impl Display for Piece {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Clone, Copy, Error, Debug)]
 pub enum ParsingError {
     #[error("error parsing fen")]
     ErrorParsingFEN,
@@ -139,7 +139,7 @@ pub enum ParsingError {
     NoPieceFound,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct BoardState {
     pub board: [u8; 64],
     pub white_to_move: bool,
@@ -176,11 +176,25 @@ impl BoardState {
     }
 }
 
-pub struct Board {}
+#[derive(Clone, Copy, Debug)]
+pub struct Board {
+    state: BoardState,
+}
 
 impl Board {
     pub fn new() -> Board {
-        Board {}
+        Board {
+            state: BoardState {
+                board: [0; 64],
+                white_to_move: true,
+            },
+        }
+    }
+
+    pub fn from_fen(fen: String) -> Board {
+        Board {
+            state: BoardState::from_fen(fen).unwrap(), // FIXME: unwrap
+        }
     }
 }
 
@@ -189,9 +203,6 @@ impl Widget for Board {
         if area.area() == 0 {
             return;
         }
-        let board_data =
-            BoardState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
-                .unwrap(); // FIXME: unwrap
         let mut rows = Vec::with_capacity(8);
         for i in 0..8 {
             let mut row = Vec::with_capacity(8);
@@ -201,7 +212,7 @@ impl Widget for Board {
                     i if i % 2 == 0 => Style::default().bg(Color::Gray),
                     _ => panic!("invalid remainder"),
                 };
-                let piece = Piece::try_from(board_data.board[i * 8 + j]);
+                let piece = Piece::try_from(self.state.board[i * 8 + j]);
                 let piece_img = match &piece {
                     Ok(p) => p.to_string(),
                     Err(ParsingError::NoPieceFound) => String::new(),
