@@ -74,10 +74,15 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     let block = Block::default().title("Help").borders(Borders::ALL);
     let shortcuts = [
         ("q", "Quit"),
+        ("S", "Set starting position on the board"),
         ("<TAB>", "Next window"),
         (":", "Enter console"),
     ];
-    let console_shortcuts = [("ESC", "Exit console"), ("Enter", "Execute command")];
+    let console_shortcuts = [
+        ("ESC", "Exit console"),
+        ("Enter", "Execute command"),
+        ("!<fen>", "Set position on the board"),
+    ];
     let shortcuts_help: Vec<Spans> = shortcuts
         .iter()
         .map(|(k, v)| {

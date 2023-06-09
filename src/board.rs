@@ -191,10 +191,10 @@ impl Board {
         }
     }
 
-    pub fn from_fen(fen: String) -> Board {
-        Board {
-            state: BoardState::from_fen(fen).unwrap(), // FIXME: unwrap
-        }
+    pub fn from_fen(fen: String) -> Result<Board> {
+        Ok(Board {
+            state: BoardState::from_fen(fen)?,
+        })
     }
 }
 

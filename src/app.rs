@@ -26,7 +26,12 @@ impl<'a> App<'a> {
     }
 
     pub fn set_position(&mut self, fen: String) {
-        self.board = Board::from_fen(fen)
+        match Board::from_fen(fen) {
+            Ok(b) => self.board = b,
+            Err(err) => self
+                .console
+                .log_line(format!("err: invalid position: {}", err)),
+        }
     }
 
     pub fn reset_console(&mut self) {
@@ -57,10 +62,7 @@ impl<'a> App<'a> {
                 self.console
                     .set_cursor_style(Style::default().bg(Color::White));
             }
-            'p' => self.set_position(
-                "r2qk2r/pp3ppp/B1nbpn2/2pp1b2/Q2P1B2/2P1PN2/PP1N1PPP/R3K2R b KQkq - 4 8"
-                    .to_string(),
-            ),
+            'S' => self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string()),
             _ => {}
         }
     }
