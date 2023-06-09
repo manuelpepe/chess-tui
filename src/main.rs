@@ -16,6 +16,7 @@ use tui::{
 
 mod app;
 mod board;
+mod console;
 mod ui;
 
 fn main() -> Result<()> {
@@ -64,6 +65,11 @@ fn run_app<B: Backend>(
                     KeyCode::Char(c) => app.on_key(c),
                     KeyCode::BackTab => app.on_prev_tab(),
                     KeyCode::Tab => app.on_next_tab(),
+                    KeyCode::Esc => {
+                        app.reset_console();
+                        app.in_console = false;
+                    }
+                    KeyCode::Enter => app.on_enter(),
                     // KeyCode::Up => app.on_up(),
                     // KeyCode::Down => app.on_down(),
                     _ => {}

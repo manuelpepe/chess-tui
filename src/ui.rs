@@ -1,3 +1,4 @@
+use std::iter;
 use tui::{
     backend::Backend,
     layout::{Constraint, Layout, Rect},
@@ -24,7 +25,8 @@ pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     draw_menu(f, app, chunks[0]);
     match app.tabs.index {
         0 => draw_board(f, app, chunks[1]),
-        1 => draw_help(f, app, chunks[1]),
+        1 => draw_console_log(f, app, chunks[1]),
+        2 => draw_help(f, app, chunks[1]),
         _ => {}
     }
     draw_console(f, app, chunks[2]);
@@ -57,25 +59,51 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     f.render_widget(app.board, area);
 }
 
+pub fn draw_console_log<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    f.render_widget(app.console.log.widget(), area);
+}
+
 pub fn draw_console<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let block = Block::default().title("Console").borders(Borders::ALL);
-    app.console.set_block(block);
-    let widget = app.console.widget();
+    app.console.console.set_block(block);
+    let widget = app.console.console.widget();
     f.render_widget(widget, area)
 }
 
 pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     let block = Block::default().title("Help").borders(Borders::ALL);
-    let text = vec![
-        Spans::from(vec![
-            Span::styled("q", Style::default().fg(Color::Yellow)),
-            Span::raw(" - Quit\n"),
-        ]),
-        Spans::from(vec![
-            Span::styled("<TAB>", Style::default().fg(Color::Yellow)),
-            Span::raw(" - Next window"),
-        ]),
+    let shortcuts = [
+        ("q", "Quit"),
+        ("<TAB>", "Next window"),
+        (":", "Enter console"),
     ];
+    let console_shortcuts = [("ESC", "Exit console"), ("Enter", "Execute command")];
+    let shortcuts_help: Vec<Spans> = shortcuts
+        .iter()
+        .map(|(k, v)| {
+            Spans::from(vec![
+                Span::styled(k.to_owned(), Style::default().fg(Color::Yellow)),
+                Span::raw(" - "),
+                Span::raw(v.to_owned()),
+            ])
+        })
+        .collect();
+    let console_shortcuts_help: Vec<Spans> = console_shortcuts
+        .iter()
+        .map(|(k, v)| {
+            Spans::from(vec![
+                Span::styled(k.to_owned(), Style::default().fg(Color::Yellow)),
+                Span::raw(" - "),
+                Span::raw(v.to_owned()),
+            ])
+        })
+        .collect();
+    let mut text = Vec::new();
+    text.extend(iter::once(Spans::from("General:")));
+    text.extend(shortcuts_help);
+    text.extend(iter::once(Spans::from("")));
+    text.extend(iter::once(Spans::from("Console:")));
+    text.extend(console_shortcuts_help);
     let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
     f.render_widget(paragraph, area)
 }
