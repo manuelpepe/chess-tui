@@ -70,6 +70,10 @@ fn run_app<B: Backend>(
                         app.in_console = false;
                     }
                     KeyCode::Enter => app.on_enter(),
+                    KeyCode::Backspace => app.on_backspace(),
+                    KeyCode::Delete => app.on_delete(),
+                    KeyCode::Left => app.on_left(),
+                    KeyCode::Right => app.on_right(),
                     // KeyCode::Up => app.on_up(),
                     // KeyCode::Down => app.on_down(),
                     _ => {}

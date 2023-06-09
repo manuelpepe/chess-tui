@@ -1,8 +1,8 @@
-use crate::console::Console;
+use crate::console::{Command, Console};
 use tui::style::{Color, Style};
+use tui_textarea::CursorMove;
 
 use crate::board::Board;
-use crate::console::new_console;
 
 pub struct App<'a> {
     pub title: String,
@@ -67,8 +67,42 @@ impl<'a> App<'a> {
 
     pub fn on_enter(&mut self) {
         if self.in_console {
-            self.console.eval_command();
+            match self.console.parse_command() {
+                Ok(cmd) => self.exec_command(cmd),
+                Err(err) => self.console.log_line(format!("err: {}", err)),
+            };
             self.reset_console();
+        }
+    }
+
+    pub fn on_backspace(&mut self) {
+        if self.in_console {
+            self.console.console.delete_char();
+        }
+    }
+
+    pub fn on_delete(&mut self) {
+        if self.in_console {
+            self.console.console.delete_next_char();
+        }
+    }
+
+    pub fn on_left(&mut self) {
+        if self.in_console {
+            self.console.console.move_cursor(CursorMove::Back)
+        }
+    }
+
+    pub fn on_right(&mut self) {
+        if self.in_console {
+            self.console.console.move_cursor(CursorMove::Forward)
+        }
+    }
+
+    pub fn exec_command(&mut self, cmd: Command) {
+        match cmd {
+            Command::SetPosition(pos) => self.set_position(pos),
+            Command::Exit => self.should_quit = true,
         }
     }
 }
