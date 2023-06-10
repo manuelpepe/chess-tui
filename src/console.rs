@@ -3,7 +3,7 @@ use thiserror::Error;
 use tui::style::{Color, Style};
 use tui_textarea::TextArea;
 
-const CMD_PREFIX: &str = "> ";
+pub const CMD_PREFIX: &str = "> ";
 
 pub fn new_console() -> TextArea<'static> {
     let mut ta = TextArea::default();
@@ -129,10 +129,14 @@ impl Command {
         };
         if let Some(cmd) = match word {
             "exit" => Some(Command::Exit),
-            ":set-position" => Some(Command::SetPosition(command[13..].to_string())),
+            ":set-position" if command.len() > 13 => {
+                Some(Command::SetPosition(command[13..].to_string()))
+            }
             ":search" => Some(Command::StartSeach),
             ":stop" => Some(Command::StopSearch),
-            ":move" => Some(Command::AlgebraicNotation(command[6..].to_string())),
+            ":move" if command.len() > 6 => {
+                Some(Command::AlgebraicNotation(command[6..].to_string()))
+            }
             _ => None,
         } {
             return Ok(cmd);

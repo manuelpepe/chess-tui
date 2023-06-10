@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use thiserror::Error;
 use tui::{
     layout::Constraint,
@@ -137,6 +137,9 @@ pub enum ParsingError {
 
     #[error("no piece at the given position")]
     NoPieceFound,
+
+    #[error("error parsing move")]
+    MoveParsingError,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -201,12 +204,15 @@ impl Board {
         let values = mov
             .chars()
             .take(4)
-            .map(|c| match c {
-                'a'..='h' => c as u8 - 97,
-                '1'..='8' => (c.to_digit(10).unwrap() - 1) as u8,
-                _ => 0,
+            .filter_map(|c| match c {
+                'a'..='h' => Some(c as u8 - 97),
+                '1'..='8' => Some((c.to_digit(10).unwrap() - 1) as u8),
+                _ => None,
             })
             .collect::<Vec<_>>();
+        if values.len() != 4 {
+            bail!(ParsingError::MoveParsingError);
+        }
         let first_ix = move_to_ix(values[0], values[1]);
         let second_ix = move_to_ix(values[2], values[3]);
         self.state.board[second_ix as usize] = self.state.board[first_ix as usize];

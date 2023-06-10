@@ -64,12 +64,18 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let block = Block::default()
         .title("Engine Evaluation")
         .borders(Borders::ALL);
-    let text = format!("{:?}", app.last_engine_eval)
-        .chars()
-        .collect::<Vec<_>>()
-        .chunks(chunks[1].width as usize - 2)
-        .map(|c| Spans::from(c.iter().collect::<String>()))
-        .collect::<Vec<_>>();
+    let mut text = wrap_text(
+        format!("{}", app.last_engine_eval),
+        chunks[1].width as usize - 2,
+    );
+    text.push(Spans::from(""));
+    text.extend(
+        wrap_text(
+            format!("moves: {}", app.last_engine_eval.pv.join(", ")),
+            chunks[1].width as usize - 2,
+        )
+        .into_iter(),
+    );
     let paragraph = Paragraph::new(text).block(block);
     f.render_widget(paragraph, chunks[1]);
 }
@@ -129,4 +135,12 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     text.extend(console_shortcuts_help);
     let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
     f.render_widget(paragraph, area)
+}
+
+fn wrap_text(text: String, width: usize) -> Vec<Spans<'static>> {
+    text.chars()
+        .collect::<Vec<_>>()
+        .chunks(width)
+        .map(|c| Spans::from(c.iter().collect::<String>()))
+        .collect::<Vec<_>>()
 }

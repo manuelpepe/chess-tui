@@ -1,8 +1,7 @@
-use crate::console::{Command, Console};
+use crate::console::{Command, Console, CMD_PREFIX};
 use anyhow::Result;
 use async_trait::async_trait;
 use async_uci::engine::{ChessEngine, EngineOption, Evaluation};
-use tui::style::{Color, Style};
 use tui_textarea::CursorMove;
 
 use crate::board::Board;
@@ -102,7 +101,7 @@ impl<'a> App<'a> {
     }
 
     pub fn on_backspace(&mut self) {
-        if self.in_console {
+        if self.in_console && self.console.console.cursor().1 > CMD_PREFIX.len() {
             self.console.console.delete_char();
         }
     }
