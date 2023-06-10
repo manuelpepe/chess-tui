@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use thiserror::Error;
-use tui::style::Style;
+use tui::style::{Color, Style};
 use tui_textarea::TextArea;
 
 const CMD_PREFIX: &str = "> ";
@@ -16,6 +16,8 @@ pub fn new_console() -> TextArea<'static> {
 pub struct Console {
     pub log: TextArea<'static>,
     pub console: TextArea<'static>,
+    pub history: Vec<String>,
+    pub history_ix: usize,
 }
 
 impl Console {
@@ -23,6 +25,8 @@ impl Console {
         Console {
             log: TextArea::default(),
             console: new_console(),
+            history: Vec::new(),
+            history_ix: 0,
         }
     }
 
@@ -39,8 +43,9 @@ impl Console {
         self.log.insert_newline();
     }
 
-    pub fn set_cursor_style(&mut self, style: Style) {
-        self.console.set_cursor_style(style);
+    pub fn set_active_cursor(&mut self) {
+        self.console
+            .set_cursor_style(Style::default().bg(Color::White));
     }
 
     pub fn parse_command(&mut self) -> Result<Command> {
@@ -54,7 +59,37 @@ impl Console {
             .unwrap()
             .to_string();
         self.log_line(command.clone());
+        self.add_to_history(command.clone());
         Command::from_string(command)
+    }
+
+    pub fn add_to_history(&mut self, command: String) {
+        self.history.push(command);
+        self.history_ix = self.history.len();
+    }
+
+    pub fn move_history_forwards(&mut self) {
+        if self.history_ix < self.history.len() - 1 {
+            self.history_ix += 1;
+            self.reset();
+            self.set_active_cursor();
+            self.console
+                .insert_str(self.history[self.history_ix].clone());
+        } else if self.history_ix == self.history.len() - 1 {
+            self.history_ix += 1;
+            self.reset();
+            self.set_active_cursor();
+        }
+    }
+
+    pub fn move_history_backwards(&mut self) {
+        if self.history_ix > 0 {
+            self.history_ix -= 1;
+            self.reset();
+            self.set_active_cursor();
+            self.console
+                .insert_str(self.history[self.history_ix].clone());
+        }
     }
 }
 

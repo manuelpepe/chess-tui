@@ -111,8 +111,8 @@ async fn run_app<B: Backend>(
                     KeyCode::Delete => app.on_delete(),
                     KeyCode::Left => app.on_left(),
                     KeyCode::Right => app.on_right(),
-                    // KeyCode::Up => app.on_up(),
-                    // KeyCode::Down => app.on_down(),
+                    KeyCode::Up => app.on_up(),
+                    KeyCode::Down => app.on_down(),
                     _ => {}
                 }
             }

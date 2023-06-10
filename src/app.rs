@@ -75,14 +75,12 @@ impl<'a> App<'a> {
             'q' => self.should_quit = true,
             ':' => {
                 self.in_console = true;
-                self.console
-                    .set_cursor_style(Style::default().bg(Color::White));
+                self.console.set_active_cursor();
                 self.console.insert_char(':');
             }
             '!' => {
                 self.in_console = true;
-                self.console
-                    .set_cursor_style(Style::default().bg(Color::White));
+                self.console.set_active_cursor();
                 self.console.insert_char('!');
             }
             'S' => {
@@ -124,6 +122,18 @@ impl<'a> App<'a> {
     pub fn on_right(&mut self) {
         if self.in_console {
             self.console.console.move_cursor(CursorMove::Forward)
+        }
+    }
+
+    pub fn on_up(&mut self) {
+        if self.in_console {
+            self.console.move_history_backwards()
+        }
+    }
+
+    pub fn on_down(&mut self) {
+        if self.in_console {
+            self.console.move_history_forwards()
         }
     }
 
