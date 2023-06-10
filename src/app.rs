@@ -149,6 +149,12 @@ impl<'a> App<'a> {
                 Ok(_) => {}
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
+            Command::AlgebraicNotation(mov) => match self.board.make_move(mov) {
+                Ok((from, to)) => {
+                    self.console.log_line(format!("from: {}, to: {}", from, to));
+                }
+                Err(err) => self.console.log_line(format!("err: {}", err)),
+            },
         }
     }
 }

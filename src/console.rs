@@ -108,6 +108,7 @@ pub enum Command {
     SetPosition(String),
     StartSeach,
     StopSearch,
+    AlgebraicNotation(String),
 }
 
 impl Command {
@@ -131,6 +132,7 @@ impl Command {
             ":set-position" => Some(Command::SetPosition(command[13..].to_string())),
             ":search" => Some(Command::StartSeach),
             ":stop" => Some(Command::StopSearch),
+            ":move" => Some(Command::AlgebraicNotation(command[6..].to_string())),
             _ => None,
         } {
             return Ok(cmd);

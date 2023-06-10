@@ -196,6 +196,23 @@ impl Board {
             state: BoardState::from_fen(fen)?,
         })
     }
+
+    pub fn make_move(&mut self, mov: String) -> Result<(u8, u8)> {
+        let values = mov
+            .chars()
+            .take(4)
+            .map(|c| match c {
+                'a'..='h' => c as u8 - 97,
+                '1'..='8' => (c.to_digit(10).unwrap() - 1) as u8,
+                _ => 0,
+            })
+            .collect::<Vec<_>>();
+        let first_ix = move_to_ix(values[0], values[1]);
+        let second_ix = move_to_ix(values[2], values[3]);
+        self.state.board[second_ix as usize] = self.state.board[first_ix as usize];
+        self.state.board[first_ix as usize] = 0;
+        Ok((first_ix, second_ix))
+    }
 }
 
 impl Widget for Board {
@@ -244,4 +261,19 @@ impl Widget for Board {
             .block(Block::default().title("Board").borders(Borders::ALL))
             .render(area, buf);
     }
+}
+
+fn move_to_ix(c: u8, r: u8) -> u8 {
+    // there surely is a better way to do this but can't think of it now
+    let m = vec![
+        vec![56, 57, 58, 59, 60, 61, 62, 63],
+        vec![48, 49, 50, 51, 52, 53, 54, 55],
+        vec![40, 41, 42, 43, 44, 45, 46, 47],
+        vec![32, 33, 34, 35, 36, 37, 38, 39],
+        vec![24, 25, 26, 27, 28, 29, 30, 31],
+        vec![16, 17, 18, 19, 20, 21, 22, 23],
+        vec![08, 09, 10, 11, 12, 13, 14, 15],
+        vec![00, 01, 02, 03, 04, 05, 06, 07],
+    ];
+    return m[r as usize][c as usize];
 }
