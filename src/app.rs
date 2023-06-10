@@ -77,6 +77,13 @@ impl<'a> App<'a> {
                 self.in_console = true;
                 self.console
                     .set_cursor_style(Style::default().bg(Color::White));
+                self.console.insert_char(':');
+            }
+            '!' => {
+                self.in_console = true;
+                self.console
+                    .set_cursor_style(Style::default().bg(Color::White));
+                self.console.insert_char('!');
             }
             'S' => {
                 self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())

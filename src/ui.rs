@@ -88,10 +88,11 @@ pub fn draw_console<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     let block = Block::default().title("Help").borders(Borders::ALL);
     let shortcuts = [
-        ("q", "Quit"),
-        ("S", "Set starting position on the board"),
         ("<TAB>", "Next window"),
-        (":", "Enter console"),
+        (":", "Enter console and buffer with :"),
+        ("!", "Enter console and buffer with !"),
+        ("S", "Set starting position on the board"),
+        ("q", "Quit"),
     ];
     let console_shortcuts = [
         ("ESC", "Exit console"),
