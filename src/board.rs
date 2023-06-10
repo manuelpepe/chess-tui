@@ -241,7 +241,7 @@ impl Widget for Board {
                 Constraint::Length(4),
                 Constraint::Length(4),
             ])
-            .block(Block::default().borders(Borders::ALL))
+            .block(Block::default().title("Board").borders(Borders::ALL))
             .render(area, buf);
     }
 }

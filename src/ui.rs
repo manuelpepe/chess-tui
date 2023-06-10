@@ -1,7 +1,7 @@
 use std::iter;
 use tui::{
     backend::Backend,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols::DOT,
     text::{Span, Spans},
@@ -56,7 +56,22 @@ pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 }
 
 pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
-    f.render_widget(app.board, area);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(43), Constraint::Min(10)].as_ref())
+        .split(area);
+    f.render_widget(app.board, chunks[0]);
+    let block = Block::default()
+        .title("Engine Evaluation")
+        .borders(Borders::ALL);
+    let text = format!("{:?}", app.last_engine_eval)
+        .chars()
+        .collect::<Vec<_>>()
+        .chunks(chunks[1].width as usize - 2)
+        .map(|c| Spans::from(c.iter().collect::<String>()))
+        .collect::<Vec<_>>();
+    let paragraph = Paragraph::new(text).block(block);
+    f.render_widget(paragraph, chunks[1]);
 }
 
 pub fn draw_console_log<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
