@@ -58,9 +58,20 @@ pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(43), Constraint::Min(10)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(43),
+                Constraint::Min(10),
+                Constraint::Min(3),
+            ]
+            .as_ref(),
+        )
         .split(area);
     f.render_widget(app.board, chunks[0]);
+    f.render_widget(
+        Paragraph::new(Spans::from(format!("{:?}", chunks[0]))),
+        chunks[2],
+    );
     let block = Block::default()
         .title("Engine Evaluation")
         .borders(Borders::ALL);

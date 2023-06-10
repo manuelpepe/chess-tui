@@ -97,8 +97,8 @@ async fn run_app<B: Backend>(
             .unwrap_or_else(|| Duration::from_secs(0));
 
         if crossterm::event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
+            match event::read()? {
+                Event::Key(key) => match key.code {
                     KeyCode::Char(c) => app.on_key(c).await,
                     KeyCode::BackTab => app.on_prev_tab(),
                     KeyCode::Tab => app.on_next_tab(),
@@ -114,7 +114,11 @@ async fn run_app<B: Backend>(
                     KeyCode::Up => app.on_up(),
                     KeyCode::Down => app.on_down(),
                     _ => {}
+                },
+                Event::Mouse(event) => {
+                    app.on_mouse(event);
                 }
+                _ => {}
             }
         }
         if last_tick.elapsed() >= tick_rate {

@@ -146,6 +146,7 @@ pub enum ParsingError {
 pub struct BoardState {
     pub board: [u8; 64],
     pub white_to_move: bool,
+    pub grabbed_piece: Option<u8>,
 }
 
 impl BoardState {
@@ -175,7 +176,22 @@ impl BoardState {
         Ok(BoardState {
             board: board,
             white_to_move: true,
+            grabbed_piece: None,
         })
+    }
+
+    pub fn grab_piece(&mut self, ix: u8) {
+        self.grabbed_piece = Some(self.board[ix as usize]);
+        self.board[ix as usize] = 0;
+    }
+
+    pub fn drop_piece(&mut self, ix: u8) {
+        self.board[ix as usize] = self.grabbed_piece.unwrap();
+        self.grabbed_piece = None;
+    }
+
+    pub fn has_grabbed_piece(&self) -> bool {
+        self.grabbed_piece.is_some()
     }
 }
 
@@ -190,6 +206,7 @@ impl Board {
             state: BoardState {
                 board: [0; 64],
                 white_to_move: true,
+                grabbed_piece: None,
             },
         }
     }
@@ -218,6 +235,18 @@ impl Board {
         self.state.board[second_ix as usize] = self.state.board[first_ix as usize];
         self.state.board[first_ix as usize] = 0;
         Ok((first_ix, second_ix))
+    }
+
+    pub fn grab_piece(&mut self, ix: u8) {
+        self.state.grab_piece(ix);
+    }
+
+    pub fn drop_piece(&mut self, ix: u8) {
+        self.state.drop_piece(ix);
+    }
+
+    pub fn has_grabbed_piece(&self) -> bool {
+        self.state.has_grabbed_piece()
     }
 }
 

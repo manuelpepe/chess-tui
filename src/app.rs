@@ -2,6 +2,7 @@ use crate::console::{Command, Console, CMD_PREFIX};
 use anyhow::Result;
 use async_trait::async_trait;
 use async_uci::engine::{ChessEngine, EngineOption, Evaluation};
+use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use tui_textarea::CursorMove;
 
 use crate::board::Board;
@@ -15,6 +16,7 @@ pub struct App<'a> {
     pub in_console: bool,
     pub engine: &'a mut dyn ChessEngine,
     pub last_engine_eval: Evaluation,
+    pub piece_to_grab: Option<(u16, u16)>,
 }
 
 impl<'a> App<'a> {
@@ -28,6 +30,7 @@ impl<'a> App<'a> {
             in_console: false,
             engine: engine,
             last_engine_eval: Evaluation::default(),
+            piece_to_grab: None,
         }
     }
 
@@ -156,8 +159,78 @@ impl<'a> App<'a> {
             },
         }
     }
+
+    fn get_relative_positions(event: MouseEvent) -> Option<(u16, u16)> {
+        // calculate column and row relative to board.
+        // tui-rs makes it dificult to calculate the position of a mouse click relative to a widget
+        // the workaround is knowing that the board always starts at the same absolute position in the screen (x=1, y=3)
+        // and the squares have a fixed size (4w 1h, 1w padding).
+
+        // TODO: refactor this into a more appropiate structure.
+        //  probably an Enum with differnt types of moves (algebraic, relative, etc) with
+        //  a method to get the 1d index in the board (instead of this x,y tuple).
+        match event.column.checked_sub(1) {
+            Some(col) => {
+                let col = col / 5;
+                match event.row.checked_sub(2) {
+                    Some(row) => {
+                        let row = (row / 2) - 1;
+                        return Some((col, row));
+                    }
+                    None => None,
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn on_mouse(&mut self, event: MouseEvent) {
+        match event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                let pos = App::get_relative_positions(event);
+                match pos {
+                    Some(p) => {
+                        self.piece_to_grab = Some(p);
+                        self.console.log_line(format!("grabed: {:?}", p));
+                    }
+                    None => {}
+                }
+            }
+            MouseEventKind::Up(MouseButton::Left) => {
+                let pos = match App::get_relative_positions(event) {
+                    Some(p) => p,
+                    None => return,
+                };
+                match self.piece_to_grab {
+                    Some(p) if p == pos => {
+                        if self.board.has_grabbed_piece() {
+                            let ix = p.0 + p.1 * 8;
+                            self.board.drop_piece(ix as u8);
+                            self.console.log_line(format!("drop: {:?} at {:?}", p, pos));
+                        } else {
+                            let ix = p.0 + p.1 * 8;
+                            self.board.grab_piece(ix as u8);
+                            self.console.log_line(format!("grab: {:?}", p));
+                        }
+                    }
+                    Some(p) => {
+                        let ix = p.0 + p.1 * 8;
+                        self.board.grab_piece(ix as u8);
+                        let newix = pos.0 + pos.1 * 8;
+                        self.board.drop_piece(newix as u8);
+                        self.console.log_line(format!("drop: {:?} at {:?}", p, pos));
+                    }
+                    None => {}
+                }
+                self.piece_to_grab = None;
+                self.console.log_line(format!("mouse: {:?}", event));
+            }
+            _ => {}
+        }
+    }
 }
 
+/// Keeps the state of the tabs in the UI.
 pub struct TabsState<'a> {
     pub titles: Vec<&'a str>,
     pub index: usize,
@@ -180,6 +253,7 @@ impl<'a> TabsState<'a> {
     }
 }
 
+/// An engine that does nothing, used by default when the user does not provide an engine.
 pub struct NoopEngine {}
 
 #[async_trait]
