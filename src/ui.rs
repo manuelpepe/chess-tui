@@ -82,6 +82,8 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
         ("ESC", "Exit console"),
         ("Enter", "Execute command"),
         ("!<fen>", "Set position on the board"),
+        (":search", "Start searching for best move"),
+        (":stop", "Stop searching for best move"),
     ];
     let shortcuts_help: Vec<Spans> = shortcuts
         .iter()

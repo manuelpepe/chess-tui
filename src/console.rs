@@ -71,6 +71,8 @@ pub enum CommandError {
 pub enum Command {
     Exit,
     SetPosition(String),
+    StartSeach,
+    StopSearch,
 }
 
 impl Command {
@@ -92,6 +94,8 @@ impl Command {
         if let Some(cmd) = match word {
             "exit" => Some(Command::Exit),
             "set-position" => Some(Command::SetPosition(command[13..].to_string())),
+            ":search" => Some(Command::StartSeach),
+            ":stop" => Some(Command::StopSearch),
             _ => None,
         } {
             return Ok(cmd);

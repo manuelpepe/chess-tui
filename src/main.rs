@@ -1,43 +1,80 @@
 use crate::app::App;
 use anyhow::Result;
+use app::NoopEngine;
+use clap::Parser;
+use cli::CLIArgs;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{
-    io,
+    io::{self, Stdout},
     time::{Duration, Instant},
 };
+use tokio::task::yield_now;
 use tui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
 
+use async_uci::engine::{ChessEngine, Engine};
+
 mod app;
 mod board;
+mod cli;
 mod console;
 mod ui;
 
-fn main() -> Result<()> {
-    let tick_rate = Duration::from_millis(200);
+async fn get_engine(path: String) -> Result<Engine> {
+    let mut eng = Engine::new(path.as_str()).await?;
+    eng.start_uci().await?;
+    Ok(eng)
+}
+
+fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal = Terminal::new(backend)?;
+    Ok(terminal)
+}
 
-    let mut app = App::new();
-    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string());
-    let res = run_app(&mut terminal, app, tick_rate);
-
+fn close_terminal(term: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
     disable_raw_mode()?;
     execute!(
-        terminal.backend_mut(),
+        term.backend_mut(),
         LeaveAlternateScreen,
         DisableMouseCapture,
     )?;
-    terminal.show_cursor()?;
+    term.show_cursor()?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let args = CLIArgs::parse();
+    let tick_rate = Duration::from_millis(args.tickrate);
+
+    let mut app = match args.engine_path {
+        Some(path) => {
+            let engine = get_engine(path).await?;
+            let app = App::new(Box::leak(Box::new(engine)));
+            app
+        }
+        None => {
+            let engine = NoopEngine {};
+            let app = App::new(Box::leak(Box::new(engine)));
+            app
+        }
+    };
+    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
+        .await;
+
+    let mut terminal = init_terminal()?;
+    let res = run_app(&mut terminal, app, tick_rate).await;
+    close_terminal(&mut terminal)?;
 
     if let Err(err) = res {
         println!("ERR: {:?}", err);
@@ -46,9 +83,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(
+async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
-    mut app: App,
+    mut app: App<'_>,
     tick_rate: Duration,
 ) -> Result<()> {
     let mut last_tick = Instant::now();
@@ -62,14 +99,14 @@ fn run_app<B: Backend>(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char(c) => app.on_key(c),
+                    KeyCode::Char(c) => app.on_key(c).await,
                     KeyCode::BackTab => app.on_prev_tab(),
                     KeyCode::Tab => app.on_next_tab(),
                     KeyCode::Esc => {
                         app.reset_console();
                         app.in_console = false;
                     }
-                    KeyCode::Enter => app.on_enter(),
+                    KeyCode::Enter => app.on_enter().await,
                     KeyCode::Backspace => app.on_backspace(),
                     KeyCode::Delete => app.on_delete(),
                     KeyCode::Left => app.on_left(),
@@ -81,11 +118,12 @@ fn run_app<B: Backend>(
             }
         }
         if last_tick.elapsed() >= tick_rate {
-            app.on_tick();
+            app.on_tick().await;
             last_tick = Instant::now();
         }
         if app.should_quit {
             return Ok(());
         }
+        yield_now().await;
     }
 }

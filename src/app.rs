@@ -1,4 +1,7 @@
 use crate::console::{Command, Console};
+use anyhow::Result;
+use async_trait::async_trait;
+use async_uci::engine::{ChessEngine, EngineOption, Evaluation};
 use tui::style::{Color, Style};
 use tui_textarea::CursorMove;
 
@@ -11,10 +14,12 @@ pub struct App<'a> {
     pub board: Board,
     pub console: Console,
     pub in_console: bool,
+    pub engine: &'a mut dyn ChessEngine,
+    pub last_engine_eval: Evaluation,
 }
 
 impl<'a> App<'a> {
-    pub fn new() -> App<'a> {
+    pub fn new(engine: &'a mut dyn ChessEngine) -> App<'a> {
         App {
             title: "Chess TUI".to_string(),
             should_quit: false,
@@ -22,12 +27,17 @@ impl<'a> App<'a> {
             board: Board::new(),
             console: Console::new(),
             in_console: false,
+            engine: engine,
+            last_engine_eval: Evaluation::default(),
         }
     }
 
-    pub fn set_position(&mut self, fen: String) {
-        match Board::from_fen(fen) {
-            Ok(b) => self.board = b,
+    pub async fn set_position(&mut self, fen: String) {
+        match Board::from_fen(fen.clone()) {
+            Ok(b) => {
+                self.board = b;
+                self.engine.set_position(fen.as_str()).await.unwrap();
+            }
             Err(err) => self
                 .console
                 .log_line(format!("err: invalid position: {}", err)),
@@ -47,11 +57,17 @@ impl<'a> App<'a> {
         self.tabs.previous();
     }
 
-    pub fn on_tick(&mut self) {
+    pub async fn on_tick(&mut self) {
+        if let Some(ev) = self.engine.get_evaluation().await {
+            if ev != self.last_engine_eval {
+                self.console.log_line(format!("eval: {}", ev));
+                self.last_engine_eval = ev;
+            }
+        };
         return;
     }
 
-    pub fn on_key(&mut self, c: char) {
+    pub async fn on_key(&mut self, c: char) {
         match c {
             _ if self.in_console => {
                 self.console.insert_char(c);
@@ -62,15 +78,18 @@ impl<'a> App<'a> {
                 self.console
                     .set_cursor_style(Style::default().bg(Color::White));
             }
-            'S' => self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string()),
+            'S' => {
+                self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
+                    .await
+            }
             _ => {}
         }
     }
 
-    pub fn on_enter(&mut self) {
+    pub async fn on_enter(&mut self) {
         if self.in_console {
             match self.console.parse_command() {
-                Ok(cmd) => self.exec_command(cmd),
+                Ok(cmd) => self.exec_command(cmd).await,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             };
             self.reset_console();
@@ -101,10 +120,18 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn exec_command(&mut self, cmd: Command) {
+    pub async fn exec_command(&mut self, cmd: Command) {
         match cmd {
-            Command::SetPosition(pos) => self.set_position(pos),
+            Command::SetPosition(pos) => self.set_position(pos).await,
             Command::Exit => self.should_quit = true,
+            Command::StartSeach => match self.engine.go_infinite().await {
+                Ok(_) => {}
+                Err(err) => self.console.log_line(format!("err: {}", err)),
+            },
+            Command::StopSearch => match self.engine.stop().await {
+                Ok(_) => {}
+                Err(err) => self.console.log_line(format!("err: {}", err)),
+            },
         }
     }
 }
@@ -128,5 +155,54 @@ impl<'a> TabsState<'a> {
         } else {
             self.index = self.titles.len() - 1;
         }
+    }
+}
+
+pub struct NoopEngine {}
+
+#[async_trait]
+impl ChessEngine for NoopEngine {
+    async fn start_uci(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn new_game(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn set_position(&mut self, _position: &str) -> Result<()> {
+        Ok(())
+    }
+
+    async fn go_infinite(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn go_depth(&mut self, _plies: usize) -> Result<()> {
+        Ok(())
+    }
+
+    async fn go_time(&mut self, _ms: usize) -> Result<()> {
+        Ok(())
+    }
+
+    async fn go_mate(&mut self, _mate_in: usize) -> Result<()> {
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn get_evaluation(&mut self) -> Option<Evaluation> {
+        None
+    }
+
+    async fn get_options(&mut self) -> Result<Vec<EngineOption>> {
+        Ok(Vec::new())
+    }
+
+    async fn set_option(&mut self, _option: String, _value: String) -> Result<()> {
+        Ok(())
     }
 }
