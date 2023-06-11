@@ -19,24 +19,8 @@ pub enum Piece {
 
 impl Piece {
     pub fn is_white(&self) -> bool {
-        return self.as_u8() < 64;
-    }
-
-    pub fn as_u8(&self) -> u8 {
-        match self {
-            Piece::WhiteKing => 0b00000001,
-            Piece::WhiteQueen => 0b00000010,
-            Piece::WhiteRook => 0b00000100,
-            Piece::WhiteBishop => 0b00001000,
-            Piece::WhiteKnight => 0b00010000,
-            Piece::WhitePawn => 0b00100000,
-            Piece::BlackKing => 0b01000001,
-            Piece::BlackQueen => 0b01000010,
-            Piece::BlackRook => 0b01000100,
-            Piece::BlackBishop => 0b01001000,
-            Piece::BlackKnight => 0b01010000,
-            Piece::BlackPawn => 0b01100000,
-        }
+        let v: u8 = (*self).into();
+        return v < 64;
     }
 
     pub fn as_unicode(&self) -> u32 {
@@ -53,6 +37,13 @@ impl Piece {
             Piece::BlackBishop => 0x265D,
             Piece::BlackKnight => 0x265E,
             Piece::BlackPawn => 0x265F,
+        }
+    }
+
+    fn as_unicode_char(self) -> char {
+        match std::char::from_u32(self.as_unicode()) {
+            Some(c) => c,
+            None => '�',
         }
     }
 }
@@ -104,23 +95,45 @@ impl TryFrom<char> for Piece {
 
 impl Into<u8> for Piece {
     fn into(self) -> u8 {
-        self.as_u8()
+        match self {
+            Piece::WhiteKing => 0b00000001,
+            Piece::WhiteQueen => 0b00000010,
+            Piece::WhiteRook => 0b00000100,
+            Piece::WhiteBishop => 0b00001000,
+            Piece::WhiteKnight => 0b00010000,
+            Piece::WhitePawn => 0b00100000,
+            Piece::BlackKing => 0b01000001,
+            Piece::BlackQueen => 0b01000010,
+            Piece::BlackRook => 0b01000100,
+            Piece::BlackBishop => 0b01001000,
+            Piece::BlackKnight => 0b01010000,
+            Piece::BlackPawn => 0b01100000,
+        }
     }
 }
 
-impl Into<char> for &Piece {
+impl Into<char> for Piece {
     fn into(self) -> char {
-        match std::char::from_u32(self.as_unicode()) {
-            Some(c) => c,
-            None => '�',
+        match self {
+            Piece::BlackKing => 'k',
+            Piece::BlackQueen => 'q',
+            Piece::BlackRook => 'r',
+            Piece::BlackBishop => 'b',
+            Piece::BlackKnight => 'n',
+            Piece::BlackPawn => 'p',
+            Piece::WhiteKing => 'K',
+            Piece::WhiteQueen => 'Q',
+            Piece::WhiteRook => 'R',
+            Piece::WhiteBishop => 'B',
+            Piece::WhiteKnight => 'N',
+            Piece::WhitePawn => 'P',
         }
     }
 }
 
 impl Display for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ch: char = self.into();
-        f.write_str(format!("{}", ch).as_str())
+        f.write_str(self.as_unicode_char().to_string().as_str())
     }
 }
 
