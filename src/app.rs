@@ -161,12 +161,7 @@ impl<'a> App<'a> {
             },
             Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
                 Ok(mov) => {
-                    match self.board.make_move(mov) {
-                        Ok(_poschange) => {
-                            // TODO: Experiment with feature flags to turn on debugging logs
-                        }
-                        Err(err) => self.console.log_line(format!("err: {}", err)),
-                    };
+                    self.board.make_move(mov);
                 }
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },

@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use anyhow::Result;
 use thiserror::Error;
 use tui::{
@@ -13,9 +11,6 @@ use crate::piece::{Piece, PieceError};
 pub enum ParsingError {
     #[error("error parsing fen")]
     ErrorParsingFEN,
-
-    #[error("piece encoding error")]
-    PieceEncodingError,
 
     #[error("no piece at the given position")]
     NoPieceFound,
@@ -62,6 +57,12 @@ impl BoardState {
         })
     }
 
+    pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
+        self.board[mov.to.as_ix() as usize] = self.board[mov.from.as_ix() as usize];
+        self.board[mov.from.as_ix() as usize] = 0;
+        (mov.from.as_ix(), mov.to.as_ix())
+    }
+
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
         if self.board[ix as usize] == 0 {
             return Err(ParsingError::NoPieceFound.into());
@@ -73,8 +74,11 @@ impl BoardState {
     pub fn drop_piece(&mut self, ix: u8) {
         match self.grabbed_piece {
             Some(grabbed) => {
-                self.board[ix as usize] = self.board[grabbed as usize];
-                self.board[grabbed as usize] = 0;
+                self.make_move(Move {
+                    from: Position::Index { ix: grabbed },
+                    to: Position::Index { ix },
+                    promotion: None,
+                });
                 self.grabbed_piece = None;
             }
             None => {
@@ -110,10 +114,8 @@ impl Board {
         })
     }
 
-    pub fn make_move(&mut self, mov: Move) -> Result<(u8, u8)> {
-        self.state.board[mov.to.as_ix() as usize] = self.state.board[mov.from.as_ix() as usize];
-        self.state.board[mov.from.as_ix() as usize] = 0;
-        Ok((mov.from.as_ix(), mov.to.as_ix()))
+    pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
+        self.state.make_move(mov)
     }
 
     pub fn grab_piece(&mut self, pos: Position) -> Result<()> {
@@ -121,7 +123,7 @@ impl Board {
     }
 
     pub fn drop_piece(&mut self, pos: Position) {
-        self.state.drop_piece(pos.as_ix());
+        self.state.drop_piece(pos.as_ix())
     }
 
     pub fn has_grabbed_piece(&self) -> bool {
@@ -191,6 +193,9 @@ pub enum Position {
     ///     * a8: Position::Algebraic {rank: 0, file: 7} == Position::Relative { col: 0, row: 0 }
     ///     * h1: Position::Algebraic {rank: 7, file: 0} == Position::Relative { col: 7, row: 7 }
     Relative { col: u8, row: u8 },
+
+    /// Index positions are just the index of the square in the board array.
+    Index { ix: u8 },
 }
 
 impl Position {
@@ -198,6 +203,7 @@ impl Position {
         match self {
             Position::Algebraic { rank, file } => move_to_ix(*rank, *file),
             Position::Relative { col, row } => col + row * 8,
+            Position::Index { ix } => *ix,
         }
     }
 }
