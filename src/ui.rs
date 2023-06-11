@@ -109,6 +109,10 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
         ("ESC", "Exit console"),
         ("Enter", "Execute command"),
         ("!<fen>", "Set position on the board"),
+        (
+            ":move <move>",
+            "Play move on the board. Long algebraic notation used (i.e. e2e4)",
+        ),
         (":search", "Start searching for best move"),
         (":stop", "Stop searching for best move"),
         (":q", "Quit"),

@@ -5,7 +5,7 @@ A terminal-based chess interface.
 
 ## Features
 
-* Playable board
+* Playable board (Clickable)
 * Interactive commands
 * UCI engine integration
 
@@ -26,6 +26,7 @@ Press `<TAB>` to move between windows, for more info see `Help` window.
 To enter the command line press ':', then use any of:
 
 * `!<fen>` or `:set-position <fen>`: set a position on the board 
-* `:search` start searching current position
-* `:stop` stop searching current position
-* `exit`: exit the program
+* `:search`: start searching current position
+* `:stop`: stop searching current position
+* `:move <move>`: play move on the board. long algebraic notation is used (i.e. e2e4)
+* `:q` or `exit`: exit the program
