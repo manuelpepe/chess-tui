@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
             app
         }
     };
-    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
+    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string())
         .await;
 
     let mut terminal = init_terminal()?;
@@ -113,7 +113,7 @@ async fn run_app<B: Backend>(
                     KeyCode::Down => app.on_down(),
                     _ => {}
                 },
-                Event::Mouse(event) => app.on_mouse(event),
+                Event::Mouse(event) => app.on_mouse(event).await,
                 _ => {}
             }
         }

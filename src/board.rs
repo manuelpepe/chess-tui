@@ -21,6 +21,9 @@ pub enum ParsingError {
 pub enum MoveError {
     #[error("tried to move a piece in the wrong turn")]
     WrongTurn,
+
+    #[error("tried to drop piece with no piece grabbed")]
+    NoPieceGrabbed,
 }
 
 #[derive(Clone, Copy, Error, Debug)]
@@ -90,6 +93,54 @@ impl BoardState {
         })
     }
 
+    pub fn as_fen(&self) -> String {
+        let mut fen = String::with_capacity(100);
+        for c in 0..8 {
+            let mut empty = 0;
+            for r in 0..8 {
+                let piece = self.board[c * 8 + r];
+                if piece == 0 {
+                    empty += 1;
+                } else {
+                    if empty > 0 {
+                        fen.push_str(&empty.to_string());
+                        empty = 0;
+                    }
+                    let fenpiece: char = Piece::try_from(piece).unwrap().into();
+                    fen.push_str(fenpiece.to_string().as_str());
+                }
+            }
+            if empty > 0 {
+                fen.push_str(&empty.to_string());
+            }
+            if c < 7 {
+                fen.push('/');
+            }
+        }
+        fen.push(' ');
+        fen.push_str(if self.white_to_move { "w" } else { "b" });
+        fen.push(' ');
+        if self.castling & 8 > 0 {
+            fen.push('K');
+        }
+        if self.castling & 4 > 0 {
+            fen.push('Q');
+        }
+        if self.castling & 2 > 0 {
+            fen.push('k');
+        }
+        if self.castling & 1 > 0 {
+            fen.push('q');
+        }
+        fen.push(' ');
+        fen.push('-');
+        fen.push(' ');
+        fen.push('0');
+        fen.push(' ');
+        fen.push('1');
+        fen
+    }
+
     pub fn in_bounds(&self, ix: u8) -> bool {
         ix < 64
     }
@@ -120,7 +171,7 @@ impl BoardState {
         Ok(())
     }
 
-    pub fn drop_piece(&mut self, ix: u8) {
+    pub fn drop_piece(&mut self, ix: u8) -> Result<()> {
         match self.grabbed_piece {
             Some(grabbed) => {
                 let promotion = match Piece::try_from(self.board[grabbed as usize]) {
@@ -134,10 +185,9 @@ impl BoardState {
                     promotion: promotion,
                 });
                 self.grabbed_piece = None;
+                Ok(())
             }
-            None => {
-                // TODO: Should log issue to console in debug
-            }
+            None => Err(MoveError::NoPieceGrabbed.into()),
         }
     }
 
@@ -169,6 +219,10 @@ impl Board {
         })
     }
 
+    pub fn as_fen(&self) -> String {
+        self.state.as_fen()
+    }
+
     pub fn in_bounds(&self, pos: Position) -> bool {
         self.state.in_bounds(pos.as_ix())
     }
@@ -181,7 +235,7 @@ impl Board {
         self.state.grab_piece(pos.as_ix())
     }
 
-    pub fn drop_piece(&mut self, pos: Position) {
+    pub fn drop_piece(&mut self, pos: Position) -> Result<()> {
         self.state.drop_piece(pos.as_ix())
     }
 

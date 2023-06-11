@@ -19,6 +19,7 @@ pub struct App<'a> {
     pub in_console: bool,
     pub engine: &'a mut dyn ChessEngine,
     pub last_engine_eval: Evaluation,
+    pub searching: bool,
     pub piece_to_grab: Option<Position>,
 }
 
@@ -34,6 +35,7 @@ impl<'a> App<'a> {
             engine: engine,
             last_engine_eval: Evaluation::default(),
             piece_to_grab: None,
+            searching: false,
         }
     }
 
@@ -42,6 +44,10 @@ impl<'a> App<'a> {
             Ok(b) => {
                 self.board = b;
                 self.engine.set_position(fen.as_str()).await.unwrap();
+                if self.searching {
+                    self.engine.stop().await.unwrap();
+                    self.engine.go_infinite().await.unwrap();
+                }
             }
             Err(err) => self
                 .console
@@ -89,7 +95,7 @@ impl<'a> App<'a> {
                 self.console.insert_char('!');
             }
             'S' => {
-                self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR".to_string())
+                self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq".to_string())
                     .await
             }
             _ => {}
@@ -152,11 +158,11 @@ impl<'a> App<'a> {
             Command::SetPosition(pos) => self.set_position(pos).await,
             Command::Exit => self.should_quit = true,
             Command::StartSeach => match self.engine.go_infinite().await {
-                Ok(_) => {}
+                Ok(_) => self.searching = true,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
             Command::StopSearch => match self.engine.stop().await {
-                Ok(_) => {}
+                Ok(_) => self.searching = false,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
             Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
@@ -173,7 +179,7 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn on_mouse(&mut self, event: MouseEvent) {
+    pub async fn on_mouse(&mut self, event: MouseEvent) {
         match event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 let pos = get_relative_positions(event);
@@ -190,7 +196,7 @@ impl<'a> App<'a> {
                 match self.piece_to_grab {
                     Some(p) if p == pos => {
                         if self.board.has_grabbed_piece() && self.board.in_bounds(p) {
-                            self.board.drop_piece(p);
+                            self.drop_piece(p).await;
                         } else {
                             if let Err(_) = self.board.grab_piece(p) {
                                 // tried to grab a piece that is not there
@@ -200,7 +206,7 @@ impl<'a> App<'a> {
                     Some(p) => {
                         if let Ok(_) = self.board.grab_piece(p) {
                             if self.board.in_bounds(pos) {
-                                self.board.drop_piece(pos);
+                                self.drop_piece(pos).await;
                             }
                         };
                     }
@@ -210,6 +216,19 @@ impl<'a> App<'a> {
             }
             _ => {}
         }
+    }
+
+    async fn drop_piece(&mut self, pos: Position) {
+        if let Ok(_) = self.board.drop_piece(pos) {
+            self.engine
+                .set_position(self.board.as_fen().as_str())
+                .await
+                .unwrap();
+            if self.searching {
+                self.engine.stop().await.unwrap();
+                self.engine.go_infinite().await.unwrap();
+            }
+        };
     }
 }
 

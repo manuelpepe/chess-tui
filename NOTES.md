@@ -11,7 +11,7 @@
 ### Short-term
 
 - [x] Parse FEN turn and castling rights
-- [ ] Update engine when moves are made (restart search)
+- [x] Update engine when moves are made (restart search)
 - [ ] Choose promoted piece
 - [ ] Only allow valid moves
 - [ ] Castling
