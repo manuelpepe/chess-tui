@@ -49,7 +49,7 @@ impl BoardState {
                 ix += skip as usize;
                 continue;
             }
-            if let Some(piece) = Piece::from_fen(ch) {
+            if let Ok(piece) = Piece::try_from(ch) {
                 board[ix] = piece.into();
             }
             ix += 1;

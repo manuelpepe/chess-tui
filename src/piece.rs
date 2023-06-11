@@ -55,24 +55,6 @@ impl Piece {
             Piece::BlackPawn => 0x265F,
         }
     }
-
-    pub fn from_fen(ch: char) -> Option<Piece> {
-        match ch {
-            'k' => Some(Piece::BlackKing),
-            'q' => Some(Piece::BlackQueen),
-            'r' => Some(Piece::BlackRook),
-            'b' => Some(Piece::BlackBishop),
-            'n' => Some(Piece::BlackKnight),
-            'p' => Some(Piece::BlackPawn),
-            'K' => Some(Piece::WhiteKing),
-            'Q' => Some(Piece::WhiteQueen),
-            'R' => Some(Piece::WhiteRook),
-            'B' => Some(Piece::WhiteBishop),
-            'N' => Some(Piece::WhiteKnight),
-            'P' => Some(Piece::WhitePawn),
-            _ => None,
-        }
-    }
 }
 
 impl TryFrom<u8> for Piece {
@@ -94,6 +76,28 @@ impl TryFrom<u8> for Piece {
             0b01100000 => Ok(Piece::BlackPawn),
             0b00000000 => Err(PieceError::NoPieceFound),
             _ => Err(PieceError::PieceEncodingError),
+        }
+    }
+}
+
+impl TryFrom<char> for Piece {
+    type Error = PieceError;
+
+    fn try_from(value: char) -> Result<Self, PieceError> {
+        match value {
+            'k' => Ok(Piece::BlackKing),
+            'q' => Ok(Piece::BlackQueen),
+            'r' => Ok(Piece::BlackRook),
+            'b' => Ok(Piece::BlackBishop),
+            'n' => Ok(Piece::BlackKnight),
+            'p' => Ok(Piece::BlackPawn),
+            'K' => Ok(Piece::WhiteKing),
+            'Q' => Ok(Piece::WhiteQueen),
+            'R' => Ok(Piece::WhiteRook),
+            'B' => Ok(Piece::WhiteBishop),
+            'N' => Ok(Piece::WhiteKnight),
+            'P' => Ok(Piece::WhitePawn),
+            _ => Err(PieceError::UnkownFENCharacter),
         }
     }
 }
@@ -127,4 +131,7 @@ pub enum PieceError {
 
     #[error("no piece at the given position")]
     NoPieceFound,
+
+    #[error("unkown FEN character")]
+    UnkownFENCharacter,
 }
