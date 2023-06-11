@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use thiserror::Error;
 use tui::{
     layout::Constraint,
@@ -180,14 +180,25 @@ impl BoardState {
         })
     }
 
-    pub fn grab_piece(&mut self, ix: u8) {
-        self.grabbed_piece = Some(self.board[ix as usize]);
-        self.board[ix as usize] = 0;
+    pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
+        if self.board[ix as usize] == 0 {
+            return Err(ParsingError::NoPieceFound.into());
+        }
+        self.grabbed_piece = Some(ix);
+        Ok(())
     }
 
     pub fn drop_piece(&mut self, ix: u8) {
-        self.board[ix as usize] = self.grabbed_piece.unwrap();
-        self.grabbed_piece = None;
+        match self.grabbed_piece {
+            Some(grabbed) => {
+                self.board[ix as usize] = self.board[grabbed as usize];
+                self.board[grabbed as usize] = 0;
+                self.grabbed_piece = None;
+            }
+            None => {
+                // TODO: Should log issue to console in debug
+            }
+        }
     }
 
     pub fn has_grabbed_piece(&self) -> bool {
@@ -217,32 +228,18 @@ impl Board {
         })
     }
 
-    pub fn make_move(&mut self, mov: String) -> Result<(u8, u8)> {
-        let values = mov
-            .chars()
-            .take(4)
-            .filter_map(|c| match c {
-                'a'..='h' => Some(c as u8 - 97),
-                '1'..='8' => Some((c.to_digit(10).unwrap() - 1) as u8),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        if values.len() != 4 {
-            bail!(ParsingError::MoveParsingError);
-        }
-        let first_ix = move_to_ix(values[0], values[1]);
-        let second_ix = move_to_ix(values[2], values[3]);
-        self.state.board[second_ix as usize] = self.state.board[first_ix as usize];
-        self.state.board[first_ix as usize] = 0;
-        Ok((first_ix, second_ix))
+    pub fn make_move(&mut self, mov: Move) -> Result<(u8, u8)> {
+        self.state.board[mov.to.as_ix() as usize] = self.state.board[mov.from.as_ix() as usize];
+        self.state.board[mov.from.as_ix() as usize] = 0;
+        Ok((mov.from.as_ix(), mov.to.as_ix()))
     }
 
-    pub fn grab_piece(&mut self, ix: u8) {
-        self.state.grab_piece(ix);
+    pub fn grab_piece(&mut self, pos: Position) -> Result<()> {
+        self.state.grab_piece(pos.as_ix())
     }
 
-    pub fn drop_piece(&mut self, ix: u8) {
-        self.state.drop_piece(ix);
+    pub fn drop_piece(&mut self, pos: Position) {
+        self.state.drop_piece(pos.as_ix());
     }
 
     pub fn has_grabbed_piece(&self) -> bool {
@@ -298,6 +295,42 @@ impl Widget for Board {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Position {
+    /// Algebraic positions dont know about the board representation, and instead refer
+    /// to squares by rank and file.
+    /// Both rank and file are 0-based integers, so a1 is (0, 0) and 8h is (7, 7)
+    Algebraic { rank: u8, file: u8 },
+
+    /// Relative positions know about the board representation and can represent
+    /// a square from the indexes of the board as an array.
+    /// For example, the following comparisons are true:
+    ///     * a8: Position::Algebraic {rank: 0, file: 7} == Position::Relative { col: 0, row: 0 }
+    ///     * h1: Position::Algebraic {rank: 7, file: 0} == Position::Relative { col: 7, row: 7 }
+    Relative { col: u8, row: u8 },
+}
+
+impl Position {
+    pub fn as_ix(&self) -> u8 {
+        match self {
+            Position::Algebraic { rank, file } => move_to_ix(*rank, *file),
+            Position::Relative { col, row } => col + row * 8,
+        }
+    }
+}
+
+impl PartialEq for Position {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ix() == other.as_ix()
+    }
+}
+
+pub struct Move {
+    pub from: Position,
+    pub to: Position,
+    pub promotion: Option<u8>,
+}
+
 fn move_to_ix(c: u8, r: u8) -> u8 {
     // there surely is a better way to do this but can't think of it now
     let m = vec![
@@ -311,4 +344,38 @@ fn move_to_ix(c: u8, r: u8) -> u8 {
         vec![00, 01, 02, 03, 04, 05, 06, 07],
     ];
     return m[r as usize][c as usize];
+}
+
+#[cfg(test)]
+mod test {
+    use crate::board::{move_to_ix, Position};
+
+    #[test]
+    fn test_algebraic() {
+        for c in 0..8 {
+            for r in 0..8 {
+                let pos = Position::Algebraic { rank: r, file: c };
+                assert_eq!(pos.as_ix(), move_to_ix(c, r));
+            }
+        }
+    }
+
+    #[test]
+    fn test_comparison() {
+        let comps = [
+            // a8
+            (
+                Position::Algebraic { rank: 0, file: 7 },
+                Position::Relative { col: 0, row: 0 },
+            ),
+            // h1
+            (
+                Position::Algebraic { rank: 7, file: 0 },
+                Position::Relative { col: 7, row: 7 },
+            ),
+        ];
+        for (a, b) in comps.iter() {
+            assert_eq!(a, b, "left: {} != right: {}", a.as_ix(), b.as_ix());
+        }
+    }
 }

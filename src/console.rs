@@ -128,7 +128,7 @@ impl Command {
             None => bail!(CommandError::NoCommand),
         };
         if let Some(cmd) = match word {
-            "exit" => Some(Command::Exit),
+            "exit" | ":q" => Some(Command::Exit),
             ":set-position" if command.len() > 13 => {
                 Some(Command::SetPosition(command[13..].to_string()))
             }

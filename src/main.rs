@@ -102,10 +102,7 @@ async fn run_app<B: Backend>(
                     KeyCode::Char(c) => app.on_key(c).await,
                     KeyCode::BackTab => app.on_prev_tab(),
                     KeyCode::Tab => app.on_next_tab(),
-                    KeyCode::Esc => {
-                        app.reset_console();
-                        app.in_console = false;
-                    }
+                    KeyCode::Esc => app.on_escape(),
                     KeyCode::Enter => app.on_enter().await,
                     KeyCode::Backspace => app.on_backspace(),
                     KeyCode::Delete => app.on_delete(),
@@ -115,9 +112,7 @@ async fn run_app<B: Backend>(
                     KeyCode::Down => app.on_down(),
                     _ => {}
                 },
-                Event::Mouse(event) => {
-                    app.on_mouse(event);
-                }
+                Event::Mouse(event) => app.on_mouse(event),
                 _ => {}
             }
         }
