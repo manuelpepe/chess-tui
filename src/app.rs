@@ -44,10 +44,7 @@ impl<'a> App<'a> {
             Ok(b) => {
                 self.board = b;
                 self.engine.set_position(fen.as_str()).await.unwrap();
-                if self.searching {
-                    self.engine.stop().await.unwrap();
-                    self.engine.go_infinite().await.unwrap();
-                }
+                self.restart_search().await.unwrap();
             }
             Err(err) => self
                 .console
@@ -166,13 +163,12 @@ impl<'a> App<'a> {
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
             Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
-                Ok(mov) => {
-                    if !self.board.in_bounds(mov.from) || !self.board.in_bounds(mov.to) {
-                        self.console
-                            .log_line(format!("err: invalid move: {:?}", mov));
-                        return;
-                    }
+                Ok(mov) if mov.in_bounds(self.board) => {
                     self.board.make_move(mov);
+                }
+                Ok(mov) => {
+                    self.console
+                        .log_line(format!("err: invalid move: {:?}", mov));
                 }
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
@@ -224,11 +220,16 @@ impl<'a> App<'a> {
                 .set_position(self.board.as_fen().as_str())
                 .await
                 .unwrap();
-            if self.searching {
-                self.engine.stop().await.unwrap();
-                self.engine.go_infinite().await.unwrap();
-            }
+            self.restart_search().await.unwrap();
         };
+    }
+
+    async fn restart_search(&mut self) -> Result<()> {
+        if self.searching {
+            self.engine.stop().await?;
+            self.engine.go_infinite().await?;
+        }
+        Ok(())
     }
 }
 

@@ -337,6 +337,12 @@ pub struct Move {
     pub promotion: Option<Piece>,
 }
 
+impl Move {
+    pub fn in_bounds(&self, board: Board) -> bool {
+        board.in_bounds(self.from) && board.in_bounds(self.to)
+    }
+}
+
 fn move_to_ix(c: u8, r: u8) -> u8 {
     // there surely is a better way to do this but can't think of it now
     let m = vec![
