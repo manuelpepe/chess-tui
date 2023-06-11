@@ -62,6 +62,9 @@ impl BoardState {
     }
 
     pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
+        if mov.from == mov.to {
+            return (mov.from.as_ix(), mov.to.as_ix());
+        }
         let final_piece = match mov.promotion {
             Some(p) => p.into(),
             None => self.board[mov.from.as_ix() as usize],
@@ -156,11 +159,14 @@ impl Widget for Board {
             let mut row = Vec::with_capacity(8);
             for j in 0..8 {
                 let style = match i + j {
-                    i if i % 2 != 0 => Style::default().bg(Color::DarkGray),
-                    i if i % 2 == 0 => Style::default().bg(Color::Gray),
+                    _ if self.state.grabbed_piece == Some(i * 8 + j) => {
+                        Style::default().bg(Color::LightRed)
+                    }
+                    x if x % 2 != 0 => Style::default().bg(Color::DarkGray),
+                    x if x % 2 == 0 => Style::default().bg(Color::Gray),
                     _ => panic!("invalid remainder"),
                 };
-                let piece = Piece::try_from(self.state.board[i * 8 + j]);
+                let piece = Piece::try_from(self.state.board[(i * 8 + j) as usize]);
                 let piece_img = match &piece {
                     Ok(p) => p.to_string(),
                     Err(PieceError::NoPieceFound) => String::new(),
