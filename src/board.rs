@@ -28,11 +28,14 @@ pub struct BoardState {
     pub board: [u8; 64],
     pub white_to_move: bool,
     pub grabbed_piece: Option<u8>,
+
+    /// Castling rights, 2 bits for each side, 4 bit padding:
+    /// [XXXX KQkq]
+    pub castling: u8,
 }
 
 impl BoardState {
     pub fn from_fen(value: String) -> Result<Self> {
-        // TODO: Finish parsing fen, only position is parsed for now
         let mut board = [0u8; 64];
         let position = value
             .split_whitespace()
@@ -54,10 +57,30 @@ impl BoardState {
             }
             ix += 1;
         }
+        let turn = value
+            .split_whitespace()
+            .nth(1)
+            .unwrap_or_else(|| "w")
+            .to_lowercase();
+        let castling = value
+            .split_whitespace()
+            .nth(2)
+            .unwrap_or_else(|| "")
+            .chars()
+            .fold(0, |acc, c| match c {
+                'K' => acc + 8,
+                'Q' => acc + 4,
+                'k' => acc + 2,
+                'q' => acc + 1,
+                _ => acc,
+            });
+        let _enpassant = value.split_whitespace().nth(3).unwrap_or_else(|| "");
+        // TODO: Parse timers
         Ok(BoardState {
             board: board,
-            white_to_move: true,
+            white_to_move: turn == "w",
             grabbed_piece: None,
+            castling: castling,
         })
     }
 
@@ -122,6 +145,7 @@ impl Board {
                 board: [0; 64],
                 white_to_move: true,
                 grabbed_piece: None,
+                castling: 0,
             },
         }
     }
