@@ -173,17 +173,14 @@ impl<'a> App<'a> {
             MouseEventKind::Down(MouseButton::Left) => {
                 let pos = get_relative_positions(event);
                 match pos {
-                    Some(p) => {
-                        self.piece_to_grab = Some(p);
-                        self.console.log_line(format!("grabed: {:?}", p));
-                    }
+                    Some(p) => self.piece_to_grab = Some(p),
                     None => {}
                 }
             }
             MouseEventKind::Up(MouseButton::Left) => {
                 let pos = match get_relative_positions(event) {
                     Some(p) => p,
-                    None => return,
+                    None => return, // out of bounds
                 };
                 match self.piece_to_grab {
                     Some(p) if p == pos => {

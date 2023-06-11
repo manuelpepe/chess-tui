@@ -58,7 +58,11 @@ impl BoardState {
     }
 
     pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
-        self.board[mov.to.as_ix() as usize] = self.board[mov.from.as_ix() as usize];
+        let final_piece = match mov.promotion {
+            Some(p) => p.into(),
+            None => self.board[mov.from.as_ix() as usize],
+        };
+        self.board[mov.to.as_ix() as usize] = final_piece;
         self.board[mov.from.as_ix() as usize] = 0;
         (mov.from.as_ix(), mov.to.as_ix())
     }
@@ -74,10 +78,15 @@ impl BoardState {
     pub fn drop_piece(&mut self, ix: u8) {
         match self.grabbed_piece {
             Some(grabbed) => {
+                let promotion = match Piece::try_from(self.board[grabbed as usize]) {
+                    Ok(Piece::BlackPawn) if ix > 55 => Some(Piece::BlackQueen),
+                    Ok(Piece::WhitePawn) if ix < 8 => Some(Piece::WhiteQueen),
+                    _ => None,
+                };
                 self.make_move(Move {
                     from: Position::Index { ix: grabbed },
                     to: Position::Index { ix },
-                    promotion: None,
+                    promotion: promotion,
                 });
                 self.grabbed_piece = None;
             }
@@ -217,7 +226,7 @@ impl PartialEq for Position {
 pub struct Move {
     pub from: Position,
     pub to: Position,
-    pub promotion: Option<u8>,
+    pub promotion: Option<Piece>,
 }
 
 fn move_to_ix(c: u8, r: u8) -> u8 {
