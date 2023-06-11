@@ -7,6 +7,7 @@ use tui::{
 };
 
 use crate::piece::{Piece, PieceError};
+
 #[derive(Clone, Copy, Error, Debug)]
 pub enum ParsingError {
     #[error("error parsing fen")]
@@ -17,6 +18,12 @@ pub enum ParsingError {
 
     #[error("error parsing move")]
     MoveParsingError,
+}
+
+#[derive(Clone, Copy, Error, Debug)]
+pub enum MoveError {
+    #[error("tried to move a piece in the wrong turn")]
+    WrongTurn,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -64,12 +71,14 @@ impl BoardState {
         };
         self.board[mov.to.as_ix() as usize] = final_piece;
         self.board[mov.from.as_ix() as usize] = 0;
+        self.white_to_move = !self.white_to_move;
         (mov.from.as_ix(), mov.to.as_ix())
     }
 
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
-        if self.board[ix as usize] == 0 {
-            return Err(ParsingError::NoPieceFound.into());
+        let piece = Piece::try_from(self.board[ix as usize])?;
+        if piece.is_white() != self.white_to_move {
+            return Err(MoveError::WrongTurn.into());
         }
         self.grabbed_piece = Some(ix);
         Ok(())

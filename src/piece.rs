@@ -19,7 +19,7 @@ pub enum Piece {
 
 impl Piece {
     pub fn is_white(&self) -> bool {
-        return self.as_u8() & 0b01000000 == 0b01000000;
+        return self.as_u8() < 64;
     }
 
     pub fn as_u8(&self) -> u8 {
