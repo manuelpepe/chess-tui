@@ -161,6 +161,11 @@ impl<'a> App<'a> {
             },
             Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
                 Ok(mov) => {
+                    if !self.board.in_bounds(mov.from) || !self.board.in_bounds(mov.to) {
+                        self.console
+                            .log_line(format!("err: invalid move: {:?}", mov));
+                        return;
+                    }
                     self.board.make_move(mov);
                 }
                 Err(err) => self.console.log_line(format!("err: {}", err)),
@@ -184,7 +189,7 @@ impl<'a> App<'a> {
                 };
                 match self.piece_to_grab {
                     Some(p) if p == pos => {
-                        if self.board.has_grabbed_piece() {
+                        if self.board.has_grabbed_piece() && self.board.in_bounds(p) {
                             self.board.drop_piece(p);
                         } else {
                             if let Err(_) = self.board.grab_piece(p) {
@@ -194,7 +199,9 @@ impl<'a> App<'a> {
                     }
                     Some(p) => {
                         if let Ok(_) = self.board.grab_piece(p) {
-                            self.board.drop_piece(pos);
+                            if self.board.in_bounds(pos) {
+                                self.board.drop_piece(pos);
+                            }
                         };
                     }
                     None => {}
@@ -211,22 +218,22 @@ fn get_relative_positions(event: MouseEvent) -> Option<Position> {
     // tui-rs makes it dificult to calculate the position of a mouse click relative to a widget
     // the workaround is knowing that the board always starts at the same absolute position in the screen (x=1, y=3)
     // and the squares have a fixed size (4w 1h).
-    match event.column.checked_sub(1) {
-        Some(col) => {
-            let col = col / 4;
-            match event.row.checked_sub(2) {
-                Some(row) => {
-                    let row = (row / 2) - 1;
-                    return Some(Position::Relative {
-                        col: col as u8,
-                        row: row as u8,
-                    });
-                }
-                None => None,
+    if event.column < 1 || event.row < 3 || event.column > 33 || event.row > 19 {
+        return None;
+    }
+    if let Some(col) = event.column.checked_sub(1) {
+        let col = col / 4;
+        if let Some(row) = event.row.checked_sub(2) {
+            let row = row / 2;
+            if let Some(row) = row.checked_sub(1) {
+                return Some(Position::Relative {
+                    col: col as u8,
+                    row: row as u8,
+                });
             }
         }
-        None => None,
     }
+    None
 }
 
 /// Parse long algebraic notation move. i.e. e2e4

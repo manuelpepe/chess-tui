@@ -23,6 +23,12 @@ pub enum MoveError {
     WrongTurn,
 }
 
+#[derive(Clone, Copy, Error, Debug)]
+pub enum BoardError {
+    #[error("tried to access a square out of bounds")]
+    OutOfBounds,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct BoardState {
     pub board: [u8; 64],
@@ -84,6 +90,10 @@ impl BoardState {
         })
     }
 
+    pub fn in_bounds(&self, ix: u8) -> bool {
+        ix < 64
+    }
+
     pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
         if mov.from == mov.to {
             return (mov.from.as_ix(), mov.to.as_ix());
@@ -99,6 +109,9 @@ impl BoardState {
     }
 
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
+        if !self.in_bounds(ix) {
+            return Err(BoardError::OutOfBounds.into());
+        }
         let piece = Piece::try_from(self.board[ix as usize])?;
         if piece.is_white() != self.white_to_move {
             return Err(MoveError::WrongTurn.into());
@@ -154,6 +167,10 @@ impl Board {
         Ok(Board {
             state: BoardState::from_fen(fen)?,
         })
+    }
+
+    pub fn in_bounds(&self, pos: Position) -> bool {
+        self.state.in_bounds(pos.as_ix())
     }
 
     pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
@@ -259,6 +276,7 @@ impl PartialEq for Position {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Move {
     pub from: Position,
     pub to: Position,
