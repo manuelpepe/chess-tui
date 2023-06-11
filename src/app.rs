@@ -218,10 +218,10 @@ impl<'a> App<'a> {
 fn get_relative_positions(event: MouseEvent) -> Option<Position> {
     // tui-rs makes it dificult to calculate the position of a mouse click relative to a widget
     // the workaround is knowing that the board always starts at the same absolute position in the screen (x=1, y=3)
-    // and the squares have a fixed size (4w 1h, 1w padding).
+    // and the squares have a fixed size (4w 1h).
     match event.column.checked_sub(1) {
         Some(col) => {
-            let col = col / 5;
+            let col = col / 4;
             match event.row.checked_sub(2) {
                 Some(row) => {
                     let row = (row / 2) - 1;

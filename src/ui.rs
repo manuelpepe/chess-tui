@@ -58,26 +58,31 @@ pub fn draw_menu<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(43), Constraint::Min(10)].as_ref())
+        .constraints([Constraint::Length(34), Constraint::Min(10)].as_ref())
         .split(area);
-    f.render_widget(app.board, chunks[0]);
+    let board_chunk = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(18), Constraint::Min(10)].as_ref())
+        .split(chunks[0])[0];
+    f.render_widget(app.board, board_chunk);
+    draw_evaluation(f, app, chunks[1])
+}
+
+pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let block = Block::default()
         .title("Engine Evaluation")
         .borders(Borders::ALL);
-    let mut text = wrap_text(
-        format!("{}", app.last_engine_eval),
-        chunks[1].width as usize - 2,
-    );
+    let mut text = wrap_text(format!("{}", app.last_engine_eval), area.width as usize - 2);
     text.push(Spans::from(""));
     text.extend(
         wrap_text(
             format!("moves: {}", app.last_engine_eval.pv.join(", ")),
-            chunks[1].width as usize - 2,
+            area.width as usize - 2,
         )
         .into_iter(),
     );
     let paragraph = Paragraph::new(text).block(block);
-    f.render_widget(paragraph, chunks[1]);
+    f.render_widget(paragraph, area);
 }
 
 pub fn draw_console_log<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
