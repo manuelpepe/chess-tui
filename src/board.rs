@@ -13,9 +13,6 @@ pub enum ParsingError {
     #[error("error parsing fen")]
     ErrorParsingFEN,
 
-    #[error("no piece at the given position")]
-    NoPieceFound,
-
     #[error("error parsing move")]
     MoveParsingError,
 }
@@ -261,7 +258,7 @@ mod test {
     fn test_algebraic() {
         for c in 0..8 {
             for r in 0..8 {
-                let pos = Position::Algebraic { rank: r, file: c };
+                let pos = Position::Algebraic { rank: c, file: r };
                 assert_eq!(pos.as_ix(), move_to_ix(c, r));
             }
         }
