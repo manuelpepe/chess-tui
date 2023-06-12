@@ -24,6 +24,9 @@ pub enum MoveError {
 
     #[error("tried to drop piece with no piece grabbed")]
     NoPieceGrabbed,
+
+    #[error("tried to make an illegal move: {mov:?}")]
+    IllegalMove { mov: Move },
 }
 
 #[derive(Clone, Copy, Error, Debug)]
@@ -145,10 +148,13 @@ impl BoardState {
         ix < 64
     }
 
-    pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
+    pub fn make_move(&mut self, mov: Move) -> Result<()> {
         if mov.from == mov.to {
-            return (mov.from.as_ix(), mov.to.as_ix());
+            return Ok(());
         }
+        if !mov.is_legal(self) {
+            return Err(MoveError::IllegalMove { mov: mov }.into());
+        };
         let final_piece = match mov.promotion {
             Some(p) => p.into(),
             None => self.board[mov.from.as_ix() as usize],
@@ -156,7 +162,7 @@ impl BoardState {
         self.board[mov.to.as_ix() as usize] = final_piece;
         self.board[mov.from.as_ix() as usize] = 0;
         self.white_to_move = !self.white_to_move;
-        (mov.from.as_ix(), mov.to.as_ix())
+        Ok(())
     }
 
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
@@ -183,7 +189,7 @@ impl BoardState {
                     from: Position::Index { ix: grabbed },
                     to: Position::Index { ix },
                     promotion: promotion,
-                });
+                })?;
                 self.grabbed_piece = None;
                 Ok(())
             }
@@ -193,6 +199,23 @@ impl BoardState {
 
     pub fn has_grabbed_piece(&self) -> bool {
         self.grabbed_piece.is_some()
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<Move> {
+        let mut moves = Vec::new();
+        for i in 0..64 {
+            let piece = Piece::try_from(self.board[i]);
+            if piece.is_err() {
+                continue;
+            }
+            let piece = piece.unwrap();
+            if piece.is_white() != self.white_to_move {
+                continue;
+            }
+            let mut piece_moves = piece.get_moves(&self.board, i as u8);
+            moves.append(&mut piece_moves);
+        }
+        moves
     }
 }
 
@@ -227,7 +250,7 @@ impl Board {
         self.state.in_bounds(pos.as_ix())
     }
 
-    pub fn make_move(&mut self, mov: Move) -> (u8, u8) {
+    pub fn make_move(&mut self, mov: Move) -> Result<()> {
         self.state.make_move(mov)
     }
 
@@ -249,11 +272,26 @@ impl Widget for Board {
         if area.area() == 0 {
             return;
         }
+        let legal_moves = match self.state.grabbed_piece {
+            Some(ix) => {
+                let piece = match Piece::try_from(self.state.board[ix as usize]) {
+                    Ok(p) => p,
+                    Err(_e) => return,
+                };
+                let moves = piece.get_moves(&self.state.board, ix);
+                let squares = moves.iter().map(|m| m.to).collect();
+                squares
+            }
+            None => vec![],
+        };
         let mut rows = Vec::with_capacity(8);
         for i in 0..8 {
             let mut row = Vec::with_capacity(8);
             for j in 0..8 {
                 let style = match i + j {
+                    _ if legal_moves.contains(&Position::Index { ix: i * 8 + j }) => {
+                        Style::default().bg(Color::LightGreen)
+                    }
                     _ if self.state.grabbed_piece == Some(i * 8 + j) => {
                         Style::default().bg(Color::LightRed)
                     }
@@ -330,7 +368,7 @@ impl PartialEq for Position {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Move {
     pub from: Position,
     pub to: Position,
@@ -338,8 +376,21 @@ pub struct Move {
 }
 
 impl Move {
+    pub fn new(from: Position, to: Position, promotion: Option<Piece>) -> Move {
+        Move {
+            from: from,
+            to: to,
+            promotion: promotion,
+        }
+    }
+
     pub fn in_bounds(&self, board: Board) -> bool {
         board.in_bounds(self.from) && board.in_bounds(self.to)
+    }
+
+    pub fn is_legal(&self, board: &BoardState) -> bool {
+        let moves = board.get_legal_moves();
+        moves.contains(self)
     }
 }
 

@@ -13,10 +13,13 @@
 - [x] Parse FEN turn and castling rights
 - [x] Update engine when moves are made (restart search)
 - [ ] Choose promoted piece
-- [ ] Only allow valid moves
-- [ ] Castling
+- [x] Only allow valid moves
+    - [x] Pseudo-legal moves
+    - [ ] Legal moves
+    - [ ] En passant
+    - [ ] Castling
 - [x] Highlight grabbed piece
-- [ ] Highlight legal moves
+- [x] Highlight legal moves
 - [ ] Highlight best move
 
 
@@ -31,3 +34,4 @@
 ### Long-term
 
 - [ ] Maybe some network stuff
+- [ ] Chess960

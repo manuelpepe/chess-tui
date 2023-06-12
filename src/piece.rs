@@ -1,7 +1,9 @@
 use std::fmt::Display;
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug)]
+use crate::board::{Move, Position};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Piece {
     WhiteKing,
     WhiteQueen,
@@ -21,6 +23,28 @@ impl Piece {
     pub fn is_white(&self) -> bool {
         let v: u8 = (*self).into();
         return v < 64;
+    }
+
+    pub fn white_pieces() -> Vec<Piece> {
+        vec![
+            Piece::WhiteKing,
+            Piece::WhiteQueen,
+            Piece::WhiteRook,
+            Piece::WhiteBishop,
+            Piece::WhiteKnight,
+            Piece::WhitePawn,
+        ]
+    }
+
+    pub fn black_pieces() -> Vec<Piece> {
+        vec![
+            Piece::BlackKing,
+            Piece::BlackQueen,
+            Piece::BlackRook,
+            Piece::BlackBishop,
+            Piece::BlackKnight,
+            Piece::BlackPawn,
+        ]
     }
 
     pub fn as_unicode(&self) -> u32 {
@@ -44,6 +68,176 @@ impl Piece {
         match std::char::from_u32(self.as_unicode()) {
             Some(c) => c,
             None => '�',
+        }
+    }
+
+    pub fn get_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+        // TODO: Rename to get_legal_moves and add check detection
+        match *self {
+            Piece::BlackKing | Piece::WhiteKing => self.get_sliding_moves(board, position),
+            Piece::BlackQueen | Piece::WhiteQueen => self.get_sliding_moves(board, position),
+            Piece::BlackRook | Piece::WhiteRook => self.get_sliding_moves(board, position),
+            Piece::BlackBishop | Piece::WhiteBishop => self.get_sliding_moves(board, position),
+            Piece::BlackKnight | Piece::WhiteKnight => self.get_knight_moves(board, position),
+            Piece::BlackPawn | Piece::WhitePawn => self.get_pawn_moves(board, position),
+        }
+    }
+
+    fn get_sliding_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+        let mut moves = Vec::new();
+        let piece = match Piece::try_from(board[position as usize]) {
+            Ok(p) => p,
+            Err(_) => return moves,
+        };
+        let directions = vec![8, -8, 1, -1, 7, -7, 9, -9];
+        let directions = match piece {
+            Piece::WhiteQueen | Piece::BlackQueen => directions,
+            Piece::WhiteKing | Piece::BlackKing => directions,
+            Piece::WhiteRook | Piece::BlackRook => directions[0..4].to_vec(),
+            Piece::WhiteBishop | Piece::BlackBishop => directions[4..8].to_vec(),
+            _ => return moves,
+        };
+        for direction in directions {
+            let mut pos = position as i8;
+            loop {
+                let last_rank = pos % 8;
+                pos += direction;
+                let new_rank = pos % 8;
+
+                // check bounds
+                if pos < 0 || pos > 63 {
+                    break;
+                }
+                // check if position has wrapped to the left
+                if last_rank == 0 && new_rank == 7 {
+                    break;
+                }
+                // check if position has wrapped to the right
+                if last_rank == 7 && new_rank == 0 {
+                    break;
+                }
+                // add move captures
+                if let Ok(p) = Piece::try_from(board[pos as usize]) {
+                    if p.is_white() != self.is_white() {
+                        moves.push(Move::new(
+                            Position::Index { ix: position },
+                            Position::Index { ix: pos as u8 },
+                            None,
+                        ));
+                    }
+                    break;
+                }
+                // add move to valid empty square
+                moves.push(Move::new(
+                    Position::Index { ix: position },
+                    Position::Index { ix: pos as u8 },
+                    None,
+                ));
+                // only go 1 depth each direction for king
+                if piece == Piece::WhiteKing || piece == Piece::BlackKing {
+                    break;
+                }
+            }
+        }
+        moves
+    }
+
+    fn get_knight_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+        let mut moves = Vec::new();
+        let directions = vec![6, -6, 10, -10, 15, -15, 17, -17];
+        for direction in directions {
+            let new_pos = position as i8 + direction;
+            let cur_rank = position % 8;
+            let new_rank = new_pos % 8;
+            // check bounds
+            if new_pos < 0 || new_pos > 63 {
+                continue;
+            }
+            // check if position has wrapped to the left
+            if (cur_rank == 0 || cur_rank == 1) && (new_rank == 7 || new_rank == 6) {
+                continue;
+            }
+            // check if position has wrapped to the right
+            if (cur_rank == 6 || cur_rank == 7) && (new_rank == 0 || new_rank == 1) {
+                continue;
+            }
+            // add move captures
+            if let Ok(p) = Piece::try_from(board[new_pos as usize]) {
+                if p.is_white() != self.is_white() {
+                    moves.push(Move::new(
+                        Position::Index { ix: position },
+                        Position::Index { ix: new_pos as u8 },
+                        None,
+                    ));
+                }
+                continue;
+            }
+            // add move to valid empty square
+            moves.push(Move::new(
+                Position::Index { ix: position },
+                Position::Index { ix: new_pos as u8 },
+                None,
+            ));
+        }
+        moves
+    }
+
+    fn get_pawn_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+        let mut moves = Vec::new();
+        let direction: i8 = if self.is_white() { -1 } else { 1 };
+        let is_first_move = (!self.is_white() && position < 16 && position > 7)
+            || (self.is_white() && position < 56 && position > 47);
+        // forwards move
+        let ahead_pos = position as i8 + 8 * direction;
+        if ahead_pos < 64 && ahead_pos >= 0 {
+            if board[ahead_pos as usize] == 0 {
+                self.add_with_promotions(&mut moves, position, ahead_pos as u8);
+                if is_first_move {
+                    let two_ahead_pos = position as i8 + 16 * direction;
+                    if board[two_ahead_pos as usize] == 0 {
+                        self.add_with_promotions(&mut moves, position, two_ahead_pos as u8);
+                    }
+                }
+            }
+        }
+        // left capture
+        let left_pos = position as i8 + 8 * direction - 1;
+        if left_pos < 64 && left_pos >= 0 && left_pos % 8 != 7 {
+            if let Ok(p) = Piece::try_from(board[left_pos as usize]) {
+                if p.is_white() != self.is_white() {
+                    self.add_with_promotions(&mut moves, position, left_pos as u8);
+                }
+            }
+        }
+        // right capture
+        let right_pos = position as i8 + 8 * direction + 1;
+        if right_pos < 64 && right_pos >= 0 && right_pos % 8 != 0 {
+            if let Ok(p) = Piece::try_from(board[right_pos as usize]) {
+                if p.is_white() != self.is_white() {
+                    self.add_with_promotions(&mut moves, position, right_pos as u8);
+                }
+            }
+        }
+        // TODO: en passant. I need to keep track of the last move and pass it to this function.
+        moves
+    }
+
+    fn add_with_promotions(&self, moves: &mut Vec<Move>, from: u8, to: u8) {
+        let mut promotions = vec![None];
+        let is_promoting = (self.is_white() && to < 8) || (!self.is_white() && to > 55);
+        if is_promoting {
+            if self.is_white() {
+                promotions = Piece::white_pieces().iter().map(|p| Some(*p)).collect();
+            } else {
+                promotions = Piece::black_pieces().iter().map(|p| Some(*p)).collect();
+            };
+        };
+        for piece in promotions {
+            moves.push(Move::new(
+                Position::Index { ix: from },
+                Position::Index { ix: to },
+                piece,
+            ));
         }
     }
 }

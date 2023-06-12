@@ -164,7 +164,9 @@ impl<'a> App<'a> {
             },
             Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
                 Ok(mov) if mov.in_bounds(self.board) => {
-                    self.board.make_move(mov);
+                    if let Err(err) = self.board.make_move(mov) {
+                        self.console.log_line(format!("err: {}", err));
+                    };
                 }
                 Ok(mov) => {
                     self.console
@@ -215,12 +217,15 @@ impl<'a> App<'a> {
     }
 
     async fn drop_piece(&mut self, pos: Position) {
-        if let Ok(_) = self.board.drop_piece(pos) {
-            self.engine
-                .set_position(self.board.as_fen().as_str())
-                .await
-                .unwrap();
-            self.restart_search().await.unwrap();
+        match self.board.drop_piece(pos) {
+            Ok(_) => {
+                self.engine
+                    .set_position(self.board.as_fen().as_str())
+                    .await
+                    .unwrap(); // FIXME: can panic for invalid positions
+                self.restart_search().await.unwrap();
+            }
+            Err(err) => self.console.log_line(format!("err: {}", err)),
         };
     }
 
