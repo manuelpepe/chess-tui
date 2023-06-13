@@ -275,17 +275,16 @@ fn parse_algebraic_move(mov: String) -> Result<Move> {
     if values.len() != 4 {
         return Err(ParsingError::MoveParsingError.into());
     }
-    Ok(Move {
-        from: Position::Algebraic {
+    Ok(Move::new(
+        Position::Algebraic {
             rank: values[0],
             file: values[1],
         },
-        to: Position::Algebraic {
+        Position::Algebraic {
             rank: values[2],
             file: values[3],
         },
-        promotion: None,
-    })
+    ))
 }
 
 /// Keeps the state of the tabs in the UI.

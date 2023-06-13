@@ -40,6 +40,7 @@ pub struct BoardState {
     pub board: [u8; 64],
     pub white_to_move: bool,
     pub grabbed_piece: Option<u8>,
+    pub last_move: Option<Move>,
 
     /// Castling rights, 2 bits for each side, 4 bit padding:
     /// [XXXX KQkq]
@@ -92,6 +93,7 @@ impl BoardState {
             board: board,
             white_to_move: turn == "w",
             grabbed_piece: None,
+            last_move: None,
             castling: castling,
         })
     }
@@ -167,6 +169,10 @@ impl BoardState {
         };
         self.board[mov.to.as_ix() as usize] = final_piece;
         self.board[mov.from.as_ix() as usize] = 0;
+        if let Some(captured) = mov.en_passant {
+            self.board[captured.as_ix() as usize] = 0;
+        }
+        self.last_move = Some(mov);
     }
 
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
@@ -189,11 +195,11 @@ impl BoardState {
                     Ok(Piece::WhitePawn) if ix < 8 => Some(Piece::WhiteQueen),
                     _ => None,
                 };
-                self.make_move(Move {
-                    from: Position::Index { ix: grabbed },
-                    to: Position::Index { ix },
-                    promotion: promotion,
-                })?;
+                self.make_move(Move::new_promotion(
+                    Position::Index { ix: grabbed },
+                    Position::Index { ix },
+                    promotion,
+                ))?;
                 self.grabbed_piece = None;
                 Ok(())
             }
@@ -219,7 +225,7 @@ impl BoardState {
             if piece.is_white() != self.white_to_move {
                 continue;
             }
-            let mut piece_moves = piece.get_moves(&self.board, i as u8);
+            let mut piece_moves = piece.get_moves(&self.board, i as u8, self.last_move);
             moves.append(&mut piece_moves);
         }
         moves
@@ -243,8 +249,8 @@ impl BoardState {
         self.white_to_move = !self.white_to_move;
         // look for checks
         let king_code = match self.white_to_move {
-            true => Piece::WhiteKing.into(),
-            false => Piece::BlackKing.into(),
+            true => Piece::BlackKing.into(),
+            false => Piece::WhiteKing.into(),
         };
         let king_ix = self.board.iter().position(|&p| p == king_code).unwrap();
         let check = self
@@ -272,6 +278,7 @@ impl Board {
                 board: [0; 64],
                 white_to_move: true,
                 grabbed_piece: None,
+                last_move: None,
                 castling: 0,
             },
         }
@@ -321,7 +328,7 @@ impl Widget for Board {
                 };
                 let mut copy = self.state.clone();
                 piece
-                    .get_moves(&self.state.board, ix)
+                    .get_moves(&self.state.board, ix, self.state.last_move)
                     .into_iter()
                     .filter(|m| !copy.leaves_king_in_check(*m))
                     .map(|m| m.to)
@@ -413,24 +420,50 @@ impl PartialEq for Position {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct Move {
     pub from: Position,
     pub to: Position,
     pub promotion: Option<Piece>,
+    pub en_passant: Option<Position>,
 }
 
 impl Move {
-    pub fn new(from: Position, to: Position, promotion: Option<Piece>) -> Move {
+    pub fn new(from: Position, to: Position) -> Move {
+        Move {
+            from: from,
+            to: to,
+            promotion: None,
+            en_passant: None,
+        }
+    }
+
+    pub fn new_promotion(from: Position, to: Position, promotion: Option<Piece>) -> Move {
         Move {
             from: from,
             to: to,
             promotion: promotion,
+            en_passant: None,
+        }
+    }
+
+    pub fn new_enpassant(from: Position, to: Position, en_passant: Position) -> Move {
+        Move {
+            from: from,
+            to: to,
+            promotion: None,
+            en_passant: Some(en_passant),
         }
     }
 
     pub fn in_bounds(&self, board: Board) -> bool {
         board.in_bounds(self.from) && board.in_bounds(self.to)
+    }
+}
+
+impl PartialEq for Move {
+    fn eq(&self, other: &Self) -> bool {
+        self.from == other.from && self.to == other.to && self.promotion == other.promotion
     }
 }
 

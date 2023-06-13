@@ -6,6 +6,12 @@
 * r2qk2r/pp3ppp/B1nbpn2/2pp1b2/Q2P1B2/2P1PN2/PP1N1PPP/R3K2R b KQkq
 
 
+## Calcs
+
+File from index: 7 - (i * 8 + j) / 8
+Rank from index: (i * 8 + j) % 8
+
+
 ## TODO:
 
 ### Short-term
@@ -16,7 +22,7 @@
 - [x] Only allow valid moves
     - [x] Pseudo-legal moves
     - [x] Legal moves
-    - [ ] En passant
+    - [x] En passant
     - [ ] Castling
 - [x] Highlight grabbed piece
 - [x] Highlight legal moves

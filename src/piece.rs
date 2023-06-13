@@ -71,14 +71,14 @@ impl Piece {
         }
     }
 
-    pub fn get_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+    pub fn get_moves(&self, board: &[u8; 64], position: u8, last_move: Option<Move>) -> Vec<Move> {
         match *self {
             Piece::BlackKing | Piece::WhiteKing => self.get_sliding_moves(board, position),
             Piece::BlackQueen | Piece::WhiteQueen => self.get_sliding_moves(board, position),
             Piece::BlackRook | Piece::WhiteRook => self.get_sliding_moves(board, position),
             Piece::BlackBishop | Piece::WhiteBishop => self.get_sliding_moves(board, position),
             Piece::BlackKnight | Piece::WhiteKnight => self.get_knight_moves(board, position),
-            Piece::BlackPawn | Piece::WhitePawn => self.get_pawn_moves(board, position),
+            Piece::BlackPawn | Piece::WhitePawn => self.get_pawn_moves(board, position, last_move),
         }
     }
 
@@ -121,7 +121,6 @@ impl Piece {
                         moves.push(Move::new(
                             Position::Index { ix: position },
                             Position::Index { ix: pos as u8 },
-                            None,
                         ));
                     }
                     break;
@@ -130,7 +129,6 @@ impl Piece {
                 moves.push(Move::new(
                     Position::Index { ix: position },
                     Position::Index { ix: pos as u8 },
-                    None,
                 ));
                 // only go 1 depth each direction for king
                 if piece == Piece::WhiteKing || piece == Piece::BlackKing {
@@ -166,7 +164,6 @@ impl Piece {
                     moves.push(Move::new(
                         Position::Index { ix: position },
                         Position::Index { ix: new_pos as u8 },
-                        None,
                     ));
                 }
                 continue;
@@ -175,13 +172,12 @@ impl Piece {
             moves.push(Move::new(
                 Position::Index { ix: position },
                 Position::Index { ix: new_pos as u8 },
-                None,
             ));
         }
         moves
     }
 
-    fn get_pawn_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
+    fn get_pawn_moves(&self, board: &[u8; 64], position: u8, last_move: Option<Move>) -> Vec<Move> {
         let mut moves = Vec::new();
         let direction: i8 = if self.is_white() { -1 } else { 1 };
         let is_first_move = (!self.is_white() && position < 16 && position > 7)
@@ -217,8 +213,61 @@ impl Piece {
                 }
             }
         }
-        // TODO: en passant. I need to keep track of the last move and pass it to this function.
+
+        // en passant
+        if let Some(m) = self.get_en_passant(board, position, last_move) {
+            moves.push(m);
+        }
+
         moves
+    }
+
+    fn get_en_passant(
+        &self,
+        board: &[u8; 64],
+        position: u8,
+        last_move: Option<Move>,
+    ) -> Option<Move> {
+        // check there is a last move
+        let last_move = match last_move {
+            Some(m) => m,
+            None => return None,
+        };
+        // check last move was a pawn
+        match Piece::try_from(board[last_move.to.as_ix() as usize]) {
+            Ok(p) => {
+                if p != Piece::WhitePawn && p != Piece::BlackPawn {
+                    return None;
+                }
+            }
+            Err(_) => return None,
+        };
+        // usefull vars
+        let last_from_file = last_move.from.as_ix() / 8;
+        let last_to_rank = last_move.to.as_ix() % 8;
+        let last_to_file = last_move.to.as_ix() / 8;
+        let self_rank = position % 8 as u8;
+        let self_file = position / 8 as u8;
+        // check double pawn push
+        if last_from_file.abs_diff(last_to_file) != 2 {
+            return None; // skip if last move was not a double pawn move
+        }
+        // check side by side
+        if last_to_file != self_file {
+            return None;
+        }
+        // check 1 rank offset
+        if last_to_rank.abs_diff(self_rank) != 1 {
+            return None;
+        }
+        let direction: i8 = if self.is_white() { -1 } else { 1 };
+        let capture_square = position + last_to_rank - self_rank;
+        let dest_square = (capture_square as i8 + 8 * direction) as u8;
+        Some(Move::new_enpassant(
+            Position::Index { ix: position },
+            Position::Index { ix: dest_square },
+            Position::Index { ix: capture_square },
+        ))
     }
 
     fn add_with_promotions(&self, moves: &mut Vec<Move>, from: u8, to: u8) {
@@ -232,7 +281,7 @@ impl Piece {
             };
         };
         for piece in promotions {
-            moves.push(Move::new(
+            moves.push(Move::new_promotion(
                 Position::Index { ix: from },
                 Position::Index { ix: to },
                 piece,
