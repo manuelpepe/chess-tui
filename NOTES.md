@@ -32,7 +32,7 @@ Rank from index: (i * 8 + j) % 8
 ### Mid-term
 
 - [ ] Move history
-- [ ] Configurable hotkeys
+- [ ] Settings 
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks
 

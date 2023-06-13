@@ -388,19 +388,18 @@ impl Widget for Board {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Position {
-    /// Algebraic positions dont know about the board representation, and instead refer
-    /// to squares by rank and file.
+    /// Algebraic Positions treat the board as a standard chess board with ranks and files.
     /// Both rank and file are 0-based integers, so a1 is (0, 0) and 8h is (7, 7)
     Algebraic { rank: u8, file: u8 },
 
-    /// Relative positions know about the board representation and can represent
-    /// a square from the indexes of the board as an array.
+    /// Relative Positions treat the board as a 2d array. This is useful for translating
+    /// screen positions to board positions.
     /// For example, the following comparisons are true:
     ///     * a8: Position::Algebraic {rank: 0, file: 7} == Position::Relative { col: 0, row: 0 }
     ///     * h1: Position::Algebraic {rank: 7, file: 0} == Position::Relative { col: 7, row: 7 }
     Relative { col: u8, row: u8 },
 
-    /// Index positions are just the index of the square in the board array.
+    /// Index Positions are just the index of the square in the 1d board array.
     Index { ix: u8 },
 }
 
