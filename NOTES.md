@@ -15,7 +15,7 @@
 - [ ] Choose promoted piece
 - [x] Only allow valid moves
     - [x] Pseudo-legal moves
-    - [ ] Legal moves
+    - [x] Legal moves
     - [ ] En passant
     - [ ] Castling
 - [x] Highlight grabbed piece

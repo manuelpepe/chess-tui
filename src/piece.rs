@@ -72,7 +72,6 @@ impl Piece {
     }
 
     pub fn get_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
-        // TODO: Rename to get_legal_moves and add check detection
         match *self {
             Piece::BlackKing | Piece::WhiteKing => self.get_sliding_moves(board, position),
             Piece::BlackQueen | Piece::WhiteQueen => self.get_sliding_moves(board, position),

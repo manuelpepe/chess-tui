@@ -152,17 +152,21 @@ impl BoardState {
         if mov.from == mov.to {
             return Ok(());
         }
-        if !mov.is_legal(self) {
+        if !self.is_legal(&mov) {
             return Err(MoveError::IllegalMove { mov: mov }.into());
         };
+        self.move_piece(mov);
+        self.white_to_move = !self.white_to_move;
+        Ok(())
+    }
+
+    fn move_piece(&mut self, mov: Move) {
         let final_piece = match mov.promotion {
             Some(p) => p.into(),
             None => self.board[mov.from.as_ix() as usize],
         };
         self.board[mov.to.as_ix() as usize] = final_piece;
         self.board[mov.from.as_ix() as usize] = 0;
-        self.white_to_move = !self.white_to_move;
-        Ok(())
     }
 
     pub fn grab_piece(&mut self, ix: u8) -> Result<()> {
@@ -201,14 +205,17 @@ impl BoardState {
         self.grabbed_piece.is_some()
     }
 
-    pub fn get_legal_moves(&self) -> Vec<Move> {
+    pub fn is_legal(&self, mov: &Move) -> bool {
+        self.get_legal_moves().contains(mov)
+    }
+
+    pub fn get_all_moves(&self) -> Vec<Move> {
         let mut moves = Vec::new();
         for i in 0..64 {
-            let piece = Piece::try_from(self.board[i]);
-            if piece.is_err() {
-                continue;
-            }
-            let piece = piece.unwrap();
+            let piece = match Piece::try_from(self.board[i]) {
+                Ok(p) => p,
+                Err(_e) => continue,
+            };
             if piece.is_white() != self.white_to_move {
                 continue;
             }
@@ -216,6 +223,40 @@ impl BoardState {
             moves.append(&mut piece_moves);
         }
         moves
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<Move> {
+        let mut copy = self.clone();
+        let moves = copy.get_all_moves();
+        moves
+            .into_iter()
+            .filter(|mov| !copy.leaves_king_in_check(*mov))
+            .collect()
+    }
+
+    pub fn leaves_king_in_check(&mut self, mov: Move) -> bool {
+        // backup for later restore
+        let backup_from = self.board[mov.from.as_ix() as usize];
+        let backup_to = self.board[mov.to.as_ix() as usize];
+        // change state
+        self.move_piece(mov);
+        self.white_to_move = !self.white_to_move;
+        // look for checks
+        let king_code = match self.white_to_move {
+            true => Piece::WhiteKing.into(),
+            false => Piece::BlackKing.into(),
+        };
+        let king_ix = self.board.iter().position(|&p| p == king_code).unwrap();
+        let check = self
+            .get_all_moves()
+            .iter()
+            .any(|m| m.to.as_ix() as usize == king_ix);
+        // restore state
+        self.board[mov.from.as_ix() as usize] = backup_from;
+        self.board[mov.to.as_ix() as usize] = backup_to;
+        self.white_to_move = !self.white_to_move;
+
+        check
     }
 }
 
@@ -278,9 +319,13 @@ impl Widget for Board {
                     Ok(p) => p,
                     Err(_e) => return,
                 };
-                let moves = piece.get_moves(&self.state.board, ix);
-                let squares = moves.iter().map(|m| m.to).collect();
-                squares
+                let mut copy = self.state.clone();
+                piece
+                    .get_moves(&self.state.board, ix)
+                    .into_iter()
+                    .filter(|m| !copy.leaves_king_in_check(*m))
+                    .map(|m| m.to)
+                    .collect()
             }
             None => vec![],
         };
@@ -386,11 +431,6 @@ impl Move {
 
     pub fn in_bounds(&self, board: Board) -> bool {
         board.in_bounds(self.from) && board.in_bounds(self.to)
-    }
-
-    pub fn is_legal(&self, board: &BoardState) -> bool {
-        let moves = board.get_legal_moves();
-        moves.contains(self)
     }
 }
 
