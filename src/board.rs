@@ -320,49 +320,15 @@ impl Widget for Board {
         if area.area() == 0 {
             return;
         }
-        let legal_moves = match self.state.grabbed_piece {
-            Some(ix) => {
-                let piece = match Piece::try_from(self.state.board[ix as usize]) {
-                    Ok(p) => p,
-                    Err(_e) => return,
-                };
-                let mut copy = self.state.clone();
-                piece
-                    .get_moves(&self.state.board, ix, self.state.last_move)
-                    .into_iter()
-                    .filter(|m| !copy.leaves_king_in_check(*m))
-                    .map(|m| m.to)
-                    .collect()
-            }
-            None => vec![],
-        };
+        let highlight_squares = self.get_grabbed_piece_highlights();
         let mut rows = Vec::with_capacity(8);
-        for i in 0..8 {
+        for r in 0..8 {
             let mut row = Vec::with_capacity(8);
-            for j in 0..8 {
-                let style = match i + j {
-                    _ if legal_moves.contains(&Position::Index { ix: i * 8 + j }) => {
-                        Style::default().bg(Color::LightGreen)
-                    }
-                    _ if self.state.grabbed_piece == Some(i * 8 + j) => {
-                        Style::default().bg(Color::LightRed)
-                    }
-                    x if x % 2 != 0 => Style::default().bg(Color::DarkGray),
-                    x if x % 2 == 0 => Style::default().bg(Color::Gray),
-                    _ => panic!("invalid remainder"),
-                };
-                let piece = Piece::try_from(self.state.board[(i * 8 + j) as usize]);
-                let piece_img = match &piece {
-                    Ok(p) => p.to_string(),
-                    Err(PieceError::NoPieceFound) => String::new(),
-                    Err(_e) => String::from("???"), // TODO: Should log issue to console
-                };
-                let position_format = match piece {
-                    Ok(p) if p.is_white() => format!(" {}", piece_img),
-                    Ok(p) if !p.is_white() => format!("\n {}", piece_img),
-                    _ => piece_img,
-                };
-                let cell = Cell::from(position_format).style(style);
+            for c in 0..8 {
+                let ix: u8 = r * 8 + c;
+                let style = self.get_square_style(c, r, &highlight_squares);
+                let text = self.get_piece_text(ix);
+                let cell = Cell::from(text).style(style);
                 row.push(cell);
             }
             rows.push(Row::new(row).height(2));
@@ -383,6 +349,62 @@ impl Widget for Board {
             ])
             .block(Block::default().title("Board").borders(Borders::ALL))
             .render(area, buf);
+    }
+}
+
+/// Implementation of render helper methods
+impl Board {
+    fn get_piece_text(&self, ix: u8) -> String {
+        let piece = Piece::try_from(self.state.board[ix as usize]);
+        let char = match piece {
+            Ok(p) => p.to_string(),
+            Err(PieceError::NoPieceFound) => String::new(),
+            Err(_e) => String::from("?"), // TODO: Should log issue to console
+        };
+        match piece {
+            Ok(p) if p.is_white() => format!(" {}", char),
+            Ok(p) if !p.is_white() => format!("\n {}", char),
+            _ => char,
+        }
+    }
+
+    fn get_square_style(&self, col: u8, row: u8, highlights: &Vec<Option<Color>>) -> Style {
+        let ix = row * 8 + col;
+        if let Some(Some(c)) = highlights.get(ix as usize) {
+            return Style::default().bg(*c);
+        }
+        match col + row {
+            _ if self.state.grabbed_piece == Some(ix) => Style::default().bg(Color::LightRed),
+            x if x % 2 != 0 => Style::default().bg(Color::DarkGray),
+            x if x % 2 == 0 => Style::default().bg(Color::Gray),
+            _ => panic!("invalid remainder"),
+        }
+    }
+
+    fn get_grabbed_piece_highlights(&self) -> Vec<Option<Color>> {
+        let mut highlights = vec![None; 64];
+        match self.state.grabbed_piece {
+            Some(ix) => {
+                let piece = match Piece::try_from(self.state.board[ix as usize]) {
+                    Ok(p) => p,
+                    Err(_e) => return highlights,
+                };
+                let mut copy = self.state.clone();
+                piece
+                    .get_moves(
+                        &self.state.board,
+                        ix,
+                        self.state.last_move,
+                        self.state.castling,
+                    )
+                    .into_iter()
+                    .filter(|m| !copy.leaves_king_in_check(*m))
+                    .map(|m| m.to)
+                    .for_each(|p| highlights[p.as_ix() as usize] = Some(Color::LightGreen));
+                highlights
+            }
+            None => highlights,
+        }
     }
 }
 
