@@ -39,12 +39,19 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Settings 
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks
-- [ ] More commands:
-    - [ ] Get FEN 
-    - [ ] Swap turns
-    - [ ] Invert board
+- [ ] Command work:
+    - [ ] `!fen`: get FEN of current position  (remove `:set-position`)
+    - [ ] `!pgn`: get PGN of current move history
+    - [ ] `:fen <fen>`: set a position on the board
+    - [ ] `:pgn <pgn>`: load pgn to move history
+    - [ ] `:swapturn`: swap current turn
+    - [ ] `:flipboard`: flip board vertically
+
 
 ### Long-term
 
 - [ ] Maybe some network stuff
+    - [ ] Self-hosted game ?
+    - [ ] Liches Bot API ?
+    - [ ] Stream games from lichess / chess.com ?
 - [ ] Chess960
