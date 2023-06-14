@@ -44,6 +44,7 @@ pub struct BoardState {
     pub white_to_move: bool,
     pub grabbed_piece: Option<u8>,
     pub last_move: Option<Move>,
+    pub threatmap: [u8; 64],
 
     /// Castling rights, 2 bits for each side, 4 bit padding:
     /// [XXXX KQkq]
@@ -59,7 +60,9 @@ impl BoardState {
             grabbed_piece: None,
             last_move: None,
             castling: fen.castling,
+            threatmap: [0; 64],
         };
+        state.update_threatmaps();
         Ok(state)
     }
 
@@ -84,8 +87,16 @@ impl BoardState {
             return Err(MoveError::IllegalMove { mov: mov }.into());
         };
         self.move_piece(mov);
+        self.update_threatmaps();
         self.white_to_move = !self.white_to_move;
         Ok(())
+    }
+
+    fn update_threatmaps(&mut self) {
+        self.threatmap = [0; 64];
+        for mov in self.get_all_moves() {
+            self.threatmap[mov.to.as_ix() as usize] = 1;
+        }
     }
 
     fn move_piece(&mut self, mov: Move) {
@@ -173,20 +184,19 @@ impl BoardState {
         // change state
         self.move_piece(mov);
         self.white_to_move = !self.white_to_move;
+        self.update_threatmaps();
         // look for checks
         let king_code = match self.white_to_move {
             true => Piece::BlackKing.into(),
             false => Piece::WhiteKing.into(),
         };
-        let king_ix = self.board.iter().position(|&p| p == king_code).unwrap();
-        let check = self
-            .get_all_moves()
-            .iter()
-            .any(|m| m.to.as_ix() as usize == king_ix);
+        let king_ix: usize = self.board.iter().position(|&p| p == king_code).unwrap();
+        let check = self.threatmap[king_ix] > 0;
         // restore state
         self.board[mov.from.as_ix() as usize] = backup_from;
         self.board[mov.to.as_ix() as usize] = backup_to;
         self.white_to_move = !self.white_to_move;
+        self.update_threatmaps();
 
         check
     }
@@ -206,6 +216,7 @@ impl Board {
                 grabbed_piece: None,
                 last_move: None,
                 castling: 0,
+                threatmap: [0; 64],
             },
         }
     }
