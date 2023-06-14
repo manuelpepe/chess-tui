@@ -24,6 +24,7 @@ mod app;
 mod board;
 mod cli;
 mod console;
+mod fen;
 mod piece;
 mod ui;
 

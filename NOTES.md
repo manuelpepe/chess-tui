@@ -35,7 +35,10 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Settings 
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks
-
+- [ ] More commands:
+    - [ ] Get FEN 
+    - [ ] Swap turns
+    - [ ] Invert board
 
 ### Long-term
 
