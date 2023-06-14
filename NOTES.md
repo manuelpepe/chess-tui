@@ -23,10 +23,14 @@ Rank from index: (i * 8 + j) % 8
     - [x] Pseudo-legal moves
     - [x] Legal moves
     - [x] En passant
-    - [ ] Castling
+    - [x] Castling
 - [x] Highlight grabbed piece
 - [x] Highlight legal moves
 - [ ] Highlight best move
+- [ ] Improve `:move` parsing
+    - [ ] Support castling
+    - [ ] Support en-pasant
+    - [ ] Support non-queen promotion
 
 
 ### Mid-term

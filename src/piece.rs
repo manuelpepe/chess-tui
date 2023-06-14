@@ -71,15 +71,75 @@ impl Piece {
         }
     }
 
-    pub fn get_moves(&self, board: &[u8; 64], position: u8, last_move: Option<Move>) -> Vec<Move> {
+    pub fn get_moves(
+        &self,
+        board: &[u8; 64],
+        position: u8,
+        last_move: Option<Move>,
+        castling_rights: u8,
+        threatmap: &[u8; 64],
+    ) -> Vec<Move> {
         match *self {
-            Piece::BlackKing | Piece::WhiteKing => self.get_sliding_moves(board, position),
+            Piece::BlackKing | Piece::WhiteKing => {
+                let mut moves = self.get_sliding_moves(board, position);
+                moves.append(&mut self.get_castling_moves(
+                    board,
+                    position,
+                    castling_rights,
+                    threatmap,
+                ));
+                moves
+            }
             Piece::BlackQueen | Piece::WhiteQueen => self.get_sliding_moves(board, position),
             Piece::BlackRook | Piece::WhiteRook => self.get_sliding_moves(board, position),
             Piece::BlackBishop | Piece::WhiteBishop => self.get_sliding_moves(board, position),
             Piece::BlackKnight | Piece::WhiteKnight => self.get_knight_moves(board, position),
             Piece::BlackPawn | Piece::WhitePawn => self.get_pawn_moves(board, position, last_move),
         }
+    }
+
+    fn get_castling_moves(
+        &self,
+        board: &[u8; 64],
+        position: u8,
+        castling_rights: u8,
+        threatmap: &[u8; 64],
+    ) -> Vec<Move> {
+        let king_ix = position;
+        let mut moves = Vec::new();
+        let (ks_right, qs_right, ks_rook, qs_rook) = match self.is_white() {
+            true => (castling_rights & 8 > 0, castling_rights & 4 > 0, 63, 56),
+            false => (castling_rights & 2 > 0, castling_rights & 1 > 0, 7, 0),
+        };
+        if ks_right {
+            let rook_path_clear = path_clear(board, ks_rook, king_ix + 1, &[0; 64]);
+            let king_path_clear = path_clear(board, king_ix, king_ix + 2, threatmap);
+            if rook_path_clear && king_path_clear {
+                moves.push(Move::new_castling(
+                    Position::Index { ix: king_ix },
+                    Position::Index { ix: king_ix + 2 },
+                    (
+                        Position::Index { ix: ks_rook },
+                        Position::Index { ix: king_ix + 1 },
+                    ),
+                ));
+            }
+        }
+        if qs_right {
+            let rook_path_clear = path_clear(board, qs_rook, king_ix - 1, &[0; 64]);
+            let king_path_clear = path_clear(board, king_ix, king_ix - 2, threatmap);
+            if rook_path_clear && king_path_clear {
+                moves.push(Move::new_castling(
+                    Position::Index { ix: king_ix },
+                    Position::Index { ix: king_ix - 2 },
+                    (
+                        Position::Index { ix: qs_rook },
+                        Position::Index { ix: king_ix - 1 },
+                    ),
+                ));
+            }
+        }
+        moves
     }
 
     fn get_sliding_moves(&self, board: &[u8; 64], position: u8) -> Vec<Move> {
@@ -389,4 +449,16 @@ pub enum PieceError {
 
     #[error("unkown FEN character")]
     UnkownFENCharacter,
+}
+
+fn path_clear(board: &[u8; 64], from: u8, to: u8, threatmap: &[u8; 64]) -> bool {
+    for i in from + 1..=to {
+        if board[i as usize] != 0 {
+            return false;
+        }
+        if threatmap[i as usize] != 0 {
+            return false;
+        }
+    }
+    return true;
 }

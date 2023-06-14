@@ -87,6 +87,10 @@ impl BoardState {
             return Err(MoveError::IllegalMove { mov: mov }.into());
         };
         self.move_piece(mov);
+        if let Some(sm) = mov.castling {
+            self.move_piece(Move::new(sm.0, sm.1));
+        }
+        self.update_castling_rights(&mov);
         self.update_threatmaps();
         self.white_to_move = !self.white_to_move;
         Ok(())
@@ -96,6 +100,34 @@ impl BoardState {
         self.threatmap = [0; 64];
         for mov in self.get_all_moves() {
             self.threatmap[mov.to.as_ix() as usize] = 1;
+        }
+    }
+
+    fn update_castling_rights(&mut self, mov: &Move) {
+        // check mov.to as move should already been made
+        let piece = Piece::try_from(self.board[mov.to.as_ix() as usize]);
+        let (ks_right, qs_right, ks_rook, qs_rook) = match self.white_to_move {
+            true => (8, 4, 63, 56),
+            false => (2, 1, 7, 0),
+        };
+        match piece {
+            Ok(Piece::WhiteRook | Piece::BlackRook) => {
+                if self.castling & ks_right > 0 && mov.from.as_ix() == ks_rook {
+                    self.castling -= ks_right;
+                }
+                if self.castling & qs_right > 0 && mov.from.as_ix() == qs_rook {
+                    self.castling -= qs_right;
+                }
+            }
+            Ok(Piece::WhiteKing | Piece::BlackKing) => {
+                if self.castling & ks_right > 0 {
+                    self.castling -= ks_right;
+                }
+                if self.castling & qs_right > 0 {
+                    self.castling -= qs_right;
+                }
+            }
+            _ => return,
         }
     }
 
@@ -132,10 +164,25 @@ impl BoardState {
                     Ok(Piece::WhitePawn) if ix < 8 => Some(Piece::WhiteQueen),
                     _ => None,
                 };
-                self.make_move(Move::new_promotion(
+                let castling = match Piece::try_from(self.board[grabbed as usize]) {
+                    Ok(Piece::BlackKing) if grabbed == 4 && ix == 6 => Some((7, 5)),
+                    Ok(Piece::BlackKing) if grabbed == 4 && ix == 2 => Some((0, 3)),
+                    Ok(Piece::WhiteKing) if grabbed == 60 && ix == 62 => Some((63, 61)),
+                    Ok(Piece::WhiteKing) if grabbed == 60 && ix == 58 => Some((56, 59)),
+                    _ => None,
+                };
+                let castling = match castling {
+                    Some((from, to)) => {
+                        Some((Position::Index { ix: from }, Position::Index { ix: to }))
+                    }
+                    None => None,
+                };
+                self.make_move(Move::new_with_all(
                     Position::Index { ix: grabbed },
                     Position::Index { ix },
                     promotion,
+                    None,
+                    castling,
                 ))?;
                 self.grabbed_piece = None;
                 Ok(())
@@ -162,7 +209,13 @@ impl BoardState {
             if piece.is_white() != self.white_to_move {
                 continue;
             }
-            let mut piece_moves = piece.get_moves(&self.board, i as u8, self.last_move);
+            let mut piece_moves = piece.get_moves(
+                &self.board,
+                i as u8,
+                self.last_move,
+                self.castling,
+                &self.threatmap,
+            );
             moves.append(&mut piece_moves);
         }
         moves
@@ -328,7 +381,13 @@ impl Board {
                 };
                 let mut copy = self.state.clone();
                 piece
-                    .get_moves(&self.state.board, ix, self.state.last_move)
+                    .get_moves(
+                        &self.state.board,
+                        ix,
+                        self.state.last_move,
+                        self.state.castling,
+                        &self.state.threatmap,
+                    )
                     .into_iter()
                     .filter(|m| !copy.leaves_king_in_check(*m))
                     .map(|m| m.to)
@@ -373,40 +432,47 @@ impl PartialEq for Position {
     }
 }
 
+type AuxMove = (Position, Position);
+
 #[derive(Clone, Copy, Debug)]
 pub struct Move {
     pub from: Position,
     pub to: Position,
     pub promotion: Option<Piece>,
     pub en_passant: Option<Position>,
+    pub castling: Option<AuxMove>,
 }
 
 impl Move {
-    pub fn new(from: Position, to: Position) -> Move {
-        Move {
-            from: from,
-            to: to,
-            promotion: None,
-            en_passant: None,
-        }
-    }
-
-    pub fn new_promotion(from: Position, to: Position, promotion: Option<Piece>) -> Move {
+    pub fn new_with_all(
+        from: Position,
+        to: Position,
+        promotion: Option<Piece>,
+        en_passant: Option<Position>,
+        castling: Option<AuxMove>,
+    ) -> Move {
         Move {
             from: from,
             to: to,
             promotion: promotion,
-            en_passant: None,
+            en_passant: en_passant,
+            castling: castling,
         }
+    }
+    pub fn new(from: Position, to: Position) -> Move {
+        Move::new_with_all(from, to, None, None, None)
+    }
+
+    pub fn new_promotion(from: Position, to: Position, promotion: Option<Piece>) -> Move {
+        Move::new_with_all(from, to, promotion, None, None)
     }
 
     pub fn new_enpassant(from: Position, to: Position, en_passant: Position) -> Move {
-        Move {
-            from: from,
-            to: to,
-            promotion: None,
-            en_passant: Some(en_passant),
-        }
+        Move::new_with_all(from, to, None, Some(en_passant), None)
+    }
+
+    pub fn new_castling(from: Position, to: Position, castling: AuxMove) -> Move {
+        Move::new_with_all(from, to, None, None, Some(castling))
     }
 
     pub fn in_bounds(&self, board: Board) -> bool {
