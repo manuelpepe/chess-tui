@@ -52,7 +52,9 @@ impl BoardState {
             castling: fen.castling,
             threatmap: [0; 64],
         };
+        state.white_to_move = !state.white_to_move;
         state.update_threatmaps();
+        state.white_to_move = !state.white_to_move;
         Ok(state)
     }
 
