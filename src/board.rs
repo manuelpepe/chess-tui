@@ -254,19 +254,6 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Board {
-        Board {
-            state: BoardState {
-                board: [0; 64],
-                white_to_move: true,
-                grabbed_piece: None,
-                last_move: None,
-                castling: 0,
-                threatmap: [0; 64],
-            },
-        }
-    }
-
     pub fn from_fen(fen: String) -> Result<Board> {
         Ok(Board {
             state: BoardState::from_fen(fen)?,

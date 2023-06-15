@@ -104,7 +104,7 @@ pub fn draw_moves_tree<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) 
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!("Tree Widget {:?}", app.moves_tree.state)),
+                .title(format!("Legal Moves")),
         )
         .highlight_style(
             Style::default()
@@ -131,14 +131,18 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
     let block = Block::default().title("Help").borders(Borders::ALL);
     let shortcuts = [
         ("<TAB>", "Next window"),
+        ("* <UP/DOWN> or k/j", "Scroll"),
         (":", "Enter console and buffer with :"),
         ("!", "Enter console and buffer with !"),
+        ("M", "Open legal moves pane"),
         ("S", "Set starting position on the board"),
         ("q", "Quit"),
     ];
     let console_shortcuts = [
-        ("ESC", "Exit console"),
-        ("Enter", "Execute command"),
+        ("<ESC>", "Exit console"),
+        ("<Enter>", "Execute command"),
+        ("<LEFT/RIGHT>", "Move cursor"),
+        ("<UP/DOWN>", "Traverse command history"),
         ("!<fen>", "Set position on the board"),
         (
             ":move <mv>",
@@ -147,6 +151,13 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
         (":search", "Start searching for best move"),
         (":stop", "Stop searching for best move"),
         (":q", "Quit"),
+    ];
+    let legal_moves_shortcuts = [
+        ("M", "Close legal moves pane"),
+        ("<UP/DOWN> or k/j", "Change selected move"),
+        ("* <RIGHT/LEFT> or l/h", "Open or close group"),
+        ("* <ENTER>", "Make move on the board"),
+        ("* G", "Toggle move grouping"),
     ];
     let shortcuts_help: Vec<Spans> = shortcuts
         .iter()
@@ -168,12 +179,25 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
             ])
         })
         .collect();
+    let legal_moves_shortcuts_help: Vec<Spans> = legal_moves_shortcuts
+        .iter()
+        .map(|(k, v)| {
+            Spans::from(vec![
+                Span::styled(k.to_owned(), Style::default().fg(Color::Yellow)),
+                Span::raw(" - "),
+                Span::raw(v.to_owned()),
+            ])
+        })
+        .collect();
     let mut text = Vec::new();
     text.extend(iter::once(Spans::from("General:")));
     text.extend(shortcuts_help);
     text.extend(iter::once(Spans::from("")));
     text.extend(iter::once(Spans::from("Console:")));
     text.extend(console_shortcuts_help);
+    text.extend(iter::once(Spans::from("")));
+    text.extend(iter::once(Spans::from("Legal Moves:")));
+    text.extend(legal_moves_shortcuts_help);
     let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
     f.render_widget(paragraph, area)
 }

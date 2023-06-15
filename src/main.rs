@@ -1,8 +1,5 @@
-use crate::app::App;
 use anyhow::Result;
-use app::NoopEngine;
 use clap::Parser;
-use cli::CLIArgs;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
@@ -18,6 +15,8 @@ use tui::{
     Terminal,
 };
 
+use crate::app::{App, NoopEngine};
+use crate::cli::CLIArgs;
 use async_uci::engine::{ChessEngine, Engine};
 
 mod app;
@@ -60,20 +59,20 @@ async fn main() -> Result<()> {
     let args = CLIArgs::parse();
     let tick_rate = Duration::from_millis(args.tickrate);
 
-    let mut app = match args.engine_path {
+    let app = match args.engine_path {
         Some(path) => {
             let engine = get_engine(path).await?;
-            let app = App::new(Box::leak(Box::new(engine)));
+            let leaked_engine = Box::leak(Box::new(engine));
+            let app = App::new(leaked_engine).unwrap();
             app
         }
         None => {
             let engine = NoopEngine {};
-            let app = App::new(Box::leak(Box::new(engine)));
+            let leaked_engine = Box::leak(Box::new(engine));
+            let app = App::new(leaked_engine).unwrap();
             app
         }
     };
-    app.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string())
-        .await;
 
     let mut terminal = init_terminal()?;
     let res = run_app(&mut terminal, app, tick_rate).await;

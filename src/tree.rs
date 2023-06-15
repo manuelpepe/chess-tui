@@ -13,10 +13,12 @@ impl<'a> StatefulTree<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn first(&mut self) {
         self.state.select_first();
     }
 
+    #[allow(dead_code)]
     pub fn last(&mut self) {
         self.state.select_last(&self.items);
     }
@@ -37,6 +39,7 @@ impl<'a> StatefulTree<'a> {
         self.state.key_right();
     }
 
+    #[allow(dead_code)]
     pub fn toggle(&mut self) {
         self.state.toggle_selected();
     }

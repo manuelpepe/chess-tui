@@ -27,10 +27,16 @@ Rank from index: (i * 8 + j) % 8
 - [x] Highlight grabbed piece
 - [x] Highlight legal moves
 - [ ] Highlight best move
+- [ ] Add scrolling:
+    - [ ] Help window
+    - [ ] Console
 - [ ] Improve `:move` parsing
     - [x] Support castling
     - [ ] Support en-pasant
     - [ ] Support non-queen promotion
+- [ ] Improve `Legal Moves` pane:
+    - [ ] Make move by clicking enter
+    - [ ] Toggle grouping by piece
 
 
 ### Mid-term

@@ -12,6 +12,8 @@ use tui_tree_widget::TreeItem;
 
 use crate::board::Board;
 
+pub const INITIAL_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
+
 pub struct App<'a> {
     pub title: String,
     pub should_quit: bool,
@@ -27,13 +29,18 @@ pub struct App<'a> {
     pub moves_tree: StatefulTree<'a>,
 }
 
+/// Functional Implementations
 impl<'a> App<'a> {
-    pub fn new(engine: &'a mut dyn ChessEngine) -> App<'a> {
-        App {
+    pub fn new(engine: &'a mut dyn ChessEngine) -> Result<App<'a>> {
+        App::from_fen(engine, INITIAL_POSITION.to_string())
+    }
+
+    pub fn from_fen(engine: &'a mut dyn ChessEngine, fen: String) -> Result<App<'a>> {
+        Ok(App {
             title: "Chess TUI".to_string(),
             should_quit: false,
             tabs: TabsState::new(vec!["Board", "Console", "Help"]),
-            board: Board::new(),
+            board: Board::from_fen(fen)?,
             console: Console::new(),
             in_console: false,
             engine: engine,
@@ -42,10 +49,10 @@ impl<'a> App<'a> {
             searching: false,
             in_moves_tree: false,
             moves_tree: StatefulTree::with_items(Vec::new()),
-        }
+        })
     }
 
-    pub fn update_move_tree(&mut self) {
+    fn update_move_tree(&mut self) {
         let moves = self.board.get_legal_moves();
         let items = moves
             .iter()
@@ -54,7 +61,7 @@ impl<'a> App<'a> {
         self.moves_tree = StatefulTree::with_items(items);
     }
 
-    pub async fn set_position(&mut self, fen: String) {
+    async fn set_position(&mut self, fen: String) {
         match Board::from_fen(fen.clone()) {
             Ok(b) => {
                 self.board = b;
@@ -68,19 +75,43 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn reset_console(&mut self) {
+    async fn drop_piece(&mut self, pos: Position) -> Result<()> {
+        match self.board.drop_piece(pos) {
+            Ok(_) => {
+                let fen = self.board.as_fen();
+                self.engine.set_position(fen.as_str()).await?;
+                self.restart_search().await?;
+                Ok(())
+            }
+            Err(err) => {
+                self.console.log_line(format!("err: {}", err));
+                Err(err)
+            }
+        }
+    }
+
+    async fn restart_search(&mut self) -> Result<()> {
+        if self.searching {
+            self.engine.stop().await?;
+            self.engine.go_infinite().await?;
+        }
+        Ok(())
+    }
+
+    fn focus_console(&mut self, buffered: char) {
+        self.in_console = true;
+        self.console.set_active_cursor();
+        self.console.insert_char(buffered);
+    }
+
+    fn reset_console(&mut self) {
         self.console.reset();
         self.in_console = false;
     }
+}
 
-    pub fn on_next_tab(&mut self) {
-        self.tabs.next();
-    }
-
-    pub fn on_prev_tab(&mut self) {
-        self.tabs.previous();
-    }
-
+/// Trigger Implementations
+impl<'a> App<'a> {
     pub async fn on_tick(&mut self) {
         if let Some(ev) = self.engine.get_evaluation().await {
             if ev != self.last_engine_eval {
@@ -91,47 +122,28 @@ impl<'a> App<'a> {
         return;
     }
 
-    pub async fn on_key(&mut self, c: char) {
-        match c {
-            _ if self.in_console => {
-                self.console.insert_char(c);
-            }
-            'q' => self.should_quit = true,
-            ':' => {
-                self.in_console = true;
-                self.console.set_active_cursor();
-                self.console.insert_char(':');
-            }
-            '!' => {
-                self.in_console = true;
-                self.console.set_active_cursor();
-                self.console.insert_char('!');
-            }
-            'S' => {
-                self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq".to_string())
-                    .await
-            }
-            'M' => self.in_moves_tree = !self.in_moves_tree,
-            'k' if self.in_moves_tree => self.moves_tree.up(),
-            'j' if self.in_moves_tree => self.moves_tree.down(),
-            'h' if self.in_moves_tree => self.moves_tree.left(),
-            'l' if self.in_moves_tree => self.moves_tree.right(),
-            _ => {}
-        }
-    }
-
-    pub fn on_escape(&mut self) {
-        self.reset_console();
-        self.in_console = false;
-    }
-
     pub async fn on_enter(&mut self) {
         if self.in_console {
             match self.console.parse_command() {
-                Ok(cmd) => self.exec_command(cmd).await,
+                Ok(cmd) => self.on_command(cmd).await,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             };
             self.reset_console();
+        }
+    }
+
+    pub fn on_next_tab(&mut self) {
+        self.tabs.next();
+    }
+
+    pub fn on_prev_tab(&mut self) {
+        self.tabs.previous();
+    }
+
+    pub fn on_escape(&mut self) {
+        if self.in_console {
+            self.reset_console();
+            self.in_console = false;
         }
     }
 
@@ -151,11 +163,17 @@ impl<'a> App<'a> {
         if self.in_console {
             self.console.console.move_cursor(CursorMove::Back)
         }
+        if self.in_moves_tree {
+            self.moves_tree.left()
+        }
     }
 
     pub fn on_right(&mut self) {
         if self.in_console {
             self.console.console.move_cursor(CursorMove::Forward)
+        }
+        if self.in_moves_tree {
+            self.moves_tree.right()
         }
     }
 
@@ -163,18 +181,40 @@ impl<'a> App<'a> {
         if self.in_console {
             self.console.move_history_backwards()
         }
+        if self.in_moves_tree {
+            self.moves_tree.up()
+        }
     }
 
     pub fn on_down(&mut self) {
         if self.in_console {
             self.console.move_history_forwards()
         }
+        if self.in_moves_tree {
+            self.moves_tree.down()
+        }
     }
 
-    pub async fn exec_command(&mut self, cmd: Command) {
+    pub async fn on_key(&mut self, c: char) {
+        match c {
+            _ if self.in_console => self.console.insert_char(c),
+            'q' => self.should_quit = true,
+            ':' => self.focus_console(':'),
+            '!' => self.focus_console('!'),
+            'S' => self.set_position(INITIAL_POSITION.to_string()).await,
+            'M' => self.in_moves_tree = !self.in_moves_tree,
+            'k' => self.on_up(),
+            'j' => self.on_down(),
+            'h' => self.on_left(),
+            'l' => self.on_right(),
+            _ => {}
+        }
+    }
+
+    pub async fn on_command(&mut self, cmd: Command) {
         match cmd {
-            Command::SetPosition(pos) => self.set_position(pos).await,
             Command::Exit => self.should_quit = true,
+            Command::SetPosition(pos) => self.set_position(pos).await,
             Command::StartSeach => match self.engine.go_infinite().await {
                 Ok(_) => self.searching = true,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
@@ -200,10 +240,8 @@ impl<'a> App<'a> {
     pub async fn on_mouse(&mut self, event: MouseEvent) {
         match event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                let pos = get_relative_positions(event);
-                match pos {
-                    Some(p) => self.piece_to_grab = Some(p),
-                    None => {}
+                if let Some(p) = get_relative_positions(event) {
+                    self.piece_to_grab = Some(p);
                 }
             }
             MouseEventKind::Up(MouseButton::Left) => {
@@ -238,30 +276,6 @@ impl<'a> App<'a> {
             }
             _ => {}
         }
-    }
-
-    async fn drop_piece(&mut self, pos: Position) -> Result<()> {
-        match self.board.drop_piece(pos) {
-            Ok(_) => {
-                self.engine
-                    .set_position(self.board.as_fen().as_str())
-                    .await?;
-                self.restart_search().await?;
-                Ok(())
-            }
-            Err(err) => {
-                self.console.log_line(format!("err: {}", err));
-                Err(err)
-            }
-        }
-    }
-
-    async fn restart_search(&mut self) -> Result<()> {
-        if self.searching {
-            self.engine.stop().await?;
-            self.engine.go_infinite().await?;
-        }
-        Ok(())
     }
 }
 
