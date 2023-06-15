@@ -303,6 +303,10 @@ impl Board {
     pub fn has_grabbed_piece(&self) -> bool {
         self.state.has_grabbed_piece()
     }
+
+    pub fn get_legal_moves(&self) -> Vec<Move> {
+        self.state.get_legal_moves()
+    }
 }
 
 impl Widget for Board {
@@ -426,6 +430,15 @@ impl Position {
     }
 }
 
+impl Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ix = self.as_ix();
+        let rank = ix / 8;
+        let file = ix % 8;
+        write!(f, "{}{}", (file + 97) as char, (8 - rank))
+    }
+}
+
 impl PartialEq for Position {
     fn eq(&self, other: &Self) -> bool {
         self.as_ix() == other.as_ix()
@@ -483,6 +496,16 @@ impl Move {
 impl PartialEq for Move {
     fn eq(&self, other: &Self) -> bool {
         self.from == other.from && self.to == other.to && self.promotion == other.promotion
+    }
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut mov = format!("{}{}", self.from, self.to);
+        if let Some(p) = self.promotion {
+            mov.push_str(&p.to_string());
+        }
+        write!(f, "{}", mov)
     }
 }
 

@@ -1,12 +1,12 @@
 use crate::{
-    board::{Move, ParsingError, Position},
-    console::{Command, Console, CMD_PREFIX},
+    tree::StatefulTree,
 };
 use anyhow::Result;
 use async_trait::async_trait;
 use async_uci::engine::{ChessEngine, EngineOption, Evaluation};
 use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use tui_textarea::CursorMove;
+use tui_tree_widget::TreeItem;
 
 use crate::board::Board;
 
@@ -21,6 +21,8 @@ pub struct App<'a> {
     pub last_engine_eval: Evaluation,
     pub searching: bool,
     pub piece_to_grab: Option<Position>,
+    pub in_moves_tree: bool,
+    pub moves_tree: StatefulTree<'a>,
 }
 
 impl<'a> App<'a> {
@@ -36,7 +38,18 @@ impl<'a> App<'a> {
             last_engine_eval: Evaluation::default(),
             piece_to_grab: None,
             searching: false,
+            in_moves_tree: false,
+            moves_tree: StatefulTree::with_items(Vec::new()),
         }
+    }
+
+    pub fn update_move_tree(&mut self) {
+        let moves = self.board.get_legal_moves();
+        let items = moves
+            .iter()
+            .map(|m| TreeItem::new_leaf(format!("{}", m)))
+            .collect::<Vec<_>>();
+        self.moves_tree = StatefulTree::with_items(items);
     }
 
     pub async fn set_position(&mut self, fen: String) {
@@ -45,6 +58,7 @@ impl<'a> App<'a> {
                 self.board = b;
                 self.engine.set_position(fen.as_str()).await.unwrap();
                 self.restart_search().await.unwrap();
+                self.update_move_tree();
             }
             Err(err) => self
                 .console
@@ -95,6 +109,11 @@ impl<'a> App<'a> {
                 self.set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq".to_string())
                     .await
             }
+            'M' => self.in_moves_tree = !self.in_moves_tree,
+            'k' if self.in_moves_tree => self.moves_tree.up(),
+            'j' if self.in_moves_tree => self.moves_tree.down(),
+            'h' if self.in_moves_tree => self.moves_tree.left(),
+            'l' if self.in_moves_tree => self.moves_tree.right(),
             _ => {}
         }
     }
@@ -194,7 +213,9 @@ impl<'a> App<'a> {
                 match self.piece_to_grab {
                     Some(p) if p == pos => {
                         if self.board.has_grabbed_piece() && self.board.in_bounds(p) {
-                            self.drop_piece(p).await;
+                            if let Ok(_) = self.drop_piece(p).await {
+                                self.update_move_tree();
+                            };
                         } else {
                             if let Err(_) = self.board.grab_piece(p) {
                                 // tried to grab a piece that is not there
@@ -204,7 +225,9 @@ impl<'a> App<'a> {
                     Some(p) => {
                         if let Ok(_) = self.board.grab_piece(p) {
                             if self.board.in_bounds(pos) {
-                                self.drop_piece(pos).await;
+                                if let Ok(_) = self.drop_piece(pos).await {
+                                    self.update_move_tree();
+                                };
                             }
                         };
                     }
@@ -216,17 +239,20 @@ impl<'a> App<'a> {
         }
     }
 
-    async fn drop_piece(&mut self, pos: Position) {
+    async fn drop_piece(&mut self, pos: Position) -> Result<()> {
         match self.board.drop_piece(pos) {
             Ok(_) => {
                 self.engine
                     .set_position(self.board.as_fen().as_str())
-                    .await
-                    .unwrap(); // FIXME: can panic for invalid positions
-                self.restart_search().await.unwrap();
+                    .await?;
+                self.restart_search().await?;
+                Ok(())
             }
-            Err(err) => self.console.log_line(format!("err: {}", err)),
-        };
+            Err(err) => {
+                self.console.log_line(format!("err: {}", err));
+                Err(err)
+            }
+        }
     }
 
     async fn restart_search(&mut self) -> Result<()> {

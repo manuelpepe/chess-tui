@@ -26,6 +26,7 @@ mod cli;
 mod console;
 mod fen;
 mod piece;
+mod tree;
 mod ui;
 
 async fn get_engine(path: String) -> Result<Engine> {

@@ -8,6 +8,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Tabs, Wrap},
     Frame,
 };
+use tui_tree_widget::Tree;
 
 use crate::app::App;
 
@@ -65,7 +66,20 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
         .constraints([Constraint::Length(18), Constraint::Min(10)].as_ref())
         .split(chunks[0])[0];
     f.render_widget(app.board, board_chunk);
-    draw_evaluation(f, app, chunks[1])
+    draw_game_info(f, app, chunks[1])
+}
+
+pub fn draw_game_info<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    if app.in_moves_tree {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+            .split(area);
+        draw_evaluation(f, app, chunks[0]);
+        draw_moves_tree(f, app, chunks[1]);
+    } else {
+        draw_evaluation(f, app, area);
+    }
 }
 
 pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
@@ -81,8 +95,25 @@ pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) 
         )
         .into_iter(),
     );
-    let paragraph = Paragraph::new(text).block(block);
+    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
+}
+
+pub fn draw_moves_tree<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    let items = Tree::new(app.moves_tree.items.clone())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Tree Widget {:?}", app.moves_tree.state)),
+        )
+        .highlight_style(
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::LightGreen)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
+    f.render_stateful_widget(items, area, &mut app.moves_tree.state);
 }
 
 pub fn draw_console_log<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
