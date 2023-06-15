@@ -101,11 +101,7 @@ pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) 
 
 pub fn draw_moves_tree<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let items = Tree::new(app.moves_tree.items.clone())
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!("Legal Moves")),
-        )
+        .block(Block::default().borders(Borders::ALL).title("Legal Moves"))
         .highlight_style(
             Style::default()
                 .fg(Color::Black)

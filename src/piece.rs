@@ -22,7 +22,7 @@ pub enum Piece {
 impl Piece {
     pub fn is_white(&self) -> bool {
         let v: u8 = (*self).into();
-        return v < 64;
+        v < 64
     }
 
     pub fn white_pieces() -> Vec<Piece> {
@@ -65,10 +65,7 @@ impl Piece {
     }
 
     fn as_unicode_char(self) -> char {
-        match std::char::from_u32(self.as_unicode()) {
-            Some(c) => c,
-            None => '�',
-        }
+        std::char::from_u32(self.as_unicode()).unwrap_or('�')
     }
 
     pub fn get_moves(
@@ -164,7 +161,7 @@ impl Piece {
                 let new_rank = pos % 8;
 
                 // check bounds
-                if pos < 0 || pos > 63 {
+                if !(0..=63).contains(&pos) {
                     break;
                 }
                 // check if position has wrapped to the left
@@ -207,7 +204,7 @@ impl Piece {
             let cur_rank = position % 8;
             let new_rank = new_pos % 8;
             // check bounds
-            if new_pos < 0 || new_pos > 63 {
+            if !(0..=63).contains(&new_pos) {
                 continue;
             }
             // check if position has wrapped to the left
@@ -244,20 +241,18 @@ impl Piece {
             || (self.is_white() && position < 56 && position > 47);
         // forwards move
         let ahead_pos = position as i8 + 8 * direction;
-        if ahead_pos < 64 && ahead_pos >= 0 {
-            if board[ahead_pos as usize] == 0 {
-                self.add_with_promotions(&mut moves, position, ahead_pos as u8);
-                if is_first_move {
-                    let two_ahead_pos = position as i8 + 16 * direction;
-                    if board[two_ahead_pos as usize] == 0 {
-                        self.add_with_promotions(&mut moves, position, two_ahead_pos as u8);
-                    }
+        if (0..64).contains(&ahead_pos) && board[ahead_pos as usize] == 0 {
+            self.add_with_promotions(&mut moves, position, ahead_pos as u8);
+            if is_first_move {
+                let two_ahead_pos = position as i8 + 16 * direction;
+                if board[two_ahead_pos as usize] == 0 {
+                    self.add_with_promotions(&mut moves, position, two_ahead_pos as u8);
                 }
             }
         }
         // left capture
         let left_pos = position as i8 + 8 * direction - 1;
-        if left_pos < 64 && left_pos >= 0 && left_pos % 8 != 7 {
+        if (0..64).contains(&left_pos) && left_pos % 8 != 7 {
             if let Ok(p) = Piece::try_from(board[left_pos as usize]) {
                 if p.is_white() != self.is_white() {
                     self.add_with_promotions(&mut moves, position, left_pos as u8);
@@ -266,7 +261,7 @@ impl Piece {
         }
         // right capture
         let right_pos = position as i8 + 8 * direction + 1;
-        if right_pos < 64 && right_pos >= 0 && right_pos % 8 != 0 {
+        if (0..64).contains(&right_pos) && right_pos % 8 != 0 {
             if let Ok(p) = Piece::try_from(board[right_pos as usize]) {
                 if p.is_white() != self.is_white() {
                     self.add_with_promotions(&mut moves, position, right_pos as u8);
@@ -306,8 +301,8 @@ impl Piece {
         let last_from_file = last_move.from.as_ix() / 8;
         let last_to_rank = last_move.to.as_ix() % 8;
         let last_to_file = last_move.to.as_ix() / 8;
-        let self_rank = position % 8 as u8;
-        let self_file = position / 8 as u8;
+        let self_rank = position % 8_u8;
+        let self_file = position / 8_u8;
         // check double pawn push
         if last_from_file.abs_diff(last_to_file) != 2 {
             return None; // skip if last move was not a double pawn move
@@ -395,9 +390,9 @@ impl TryFrom<char> for Piece {
     }
 }
 
-impl Into<u8> for Piece {
-    fn into(self) -> u8 {
-        match self {
+impl From<Piece> for u8 {
+    fn from(val: Piece) -> Self {
+        match val {
             Piece::WhiteKing => 0b00000001,
             Piece::WhiteQueen => 0b00000010,
             Piece::WhiteRook => 0b00000100,
@@ -414,9 +409,9 @@ impl Into<u8> for Piece {
     }
 }
 
-impl Into<char> for Piece {
-    fn into(self) -> char {
-        match self {
+impl From<Piece> for char {
+    fn from(val: Piece) -> Self {
+        match val {
             Piece::BlackKing => 'k',
             Piece::BlackQueen => 'q',
             Piece::BlackRook => 'r',
@@ -460,5 +455,5 @@ fn path_clear(board: &[u8; 64], from: u8, to: u8, threatmap: &[u8; 64]) -> bool 
             return false;
         }
     }
-    return true;
+    true
 }

@@ -43,7 +43,7 @@ impl<'a> App<'a> {
             board: Board::from_fen(fen)?,
             console: Console::new(),
             in_console: false,
-            engine: engine,
+            engine,
             last_engine_eval: Evaluation::default(),
             piece_to_grab: None,
             searching: false,
@@ -119,7 +119,6 @@ impl<'a> App<'a> {
                 self.last_engine_eval = ev;
             }
         };
-        return;
     }
 
     pub async fn on_enter(&mut self) {
@@ -252,22 +251,19 @@ impl<'a> App<'a> {
                 match self.piece_to_grab {
                     Some(p) if p == pos => {
                         if self.board.has_grabbed_piece() && self.board.in_bounds(p) {
-                            if let Ok(_) = self.drop_piece(p).await {
+                            if (self.drop_piece(p).await).is_ok() {
                                 self.update_move_tree();
                             };
-                        } else {
-                            if let Err(_) = self.board.grab_piece(p) {
-                                // tried to grab a piece that is not there
-                            };
+                        } else if self.board.grab_piece(p).is_err() {
+                            // tried to grab a piece that is not there
                         }
                     }
                     Some(p) => {
-                        if let Ok(_) = self.board.grab_piece(p) {
-                            if self.board.in_bounds(pos) {
-                                if let Ok(_) = self.drop_piece(pos).await {
-                                    self.update_move_tree();
-                                };
-                            }
+                        if self.board.grab_piece(p).is_ok()
+                            && self.board.in_bounds(pos)
+                            && (self.drop_piece(pos).await).is_ok()
+                        {
+                            self.update_move_tree();
                         };
                     }
                     None => {}

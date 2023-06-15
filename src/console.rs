@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use anyhow::{bail, Result};
 use thiserror::Error;
 use tui::style::{Color, Style};
@@ -75,16 +77,22 @@ impl Console {
         if hist_len < 1 {
             return;
         }
-        if self.history_ix < hist_len - 1 {
-            self.history_ix += 1;
-            self.reset();
-            self.set_active_cursor();
-            self.console
-                .insert_str(self.history[self.history_ix].clone());
-        } else if self.history_ix == hist_len - 1 {
-            self.history_ix += 1;
-            self.reset();
-            self.set_active_cursor();
+        match self.history_ix.cmp(&(hist_len - 1)) {
+            Ordering::Less => {
+                self.history_ix += 1;
+                self.reset();
+                self.set_active_cursor();
+                self.console
+                    .insert_str(self.history[self.history_ix].clone());
+            }
+            Ordering::Equal => {
+                self.history_ix += 1;
+                self.reset();
+                self.set_active_cursor();
+            }
+            Ordering::Greater => {
+                panic!("history in the future!")
+            }
         }
     }
 

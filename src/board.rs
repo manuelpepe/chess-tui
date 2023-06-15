@@ -9,7 +9,7 @@ use tui::{
 };
 
 use crate::{
-    fen::FEN,
+    fen::Fen,
     piece::{Piece, PieceError},
 };
 
@@ -46,7 +46,7 @@ pub struct BoardState {
 
 impl BoardState {
     pub fn from_fen(value: String) -> Result<Self> {
-        let fen = FEN::parse(value)?;
+        let fen = Fen::parse(value)?;
         let mut state = BoardState {
             board: fen.board,
             white_to_move: fen.white_to_move,
@@ -60,7 +60,7 @@ impl BoardState {
     }
 
     pub fn as_fen(&self) -> String {
-        FEN {
+        Fen {
             board: self.board,
             white_to_move: self.white_to_move,
             castling: self.castling,
@@ -77,7 +77,7 @@ impl BoardState {
             return Ok(());
         }
         if !self.is_legal(&mov) {
-            return Err(MoveError::IllegalMove { mov: mov }.into());
+            return Err(MoveError::IllegalMove { mov }.into());
         };
         self.move_piece(mov);
         if let Some(sm) = mov.castling {
@@ -120,7 +120,7 @@ impl BoardState {
                     self.castling -= qs_right;
                 }
             }
-            _ => return,
+            _ => {}
         }
     }
 
@@ -164,12 +164,8 @@ impl BoardState {
                     Ok(Piece::WhiteKing) if grabbed == 60 && ix == 58 => Some((56, 59)),
                     _ => None,
                 };
-                let castling = match castling {
-                    Some((from, to)) => {
-                        Some((Position::Index { ix: from }, Position::Index { ix: to }))
-                    }
-                    None => None,
-                };
+                let castling = castling
+                    .map(|(from, to)| (Position::Index { ix: from }, Position::Index { ix: to }));
                 self.make_move(Move::new_with_all(
                     Position::Index { ix: grabbed },
                     Position::Index { ix },
@@ -215,7 +211,7 @@ impl BoardState {
     }
 
     pub fn get_legal_moves(&self) -> Vec<Move> {
-        let mut copy = self.clone();
+        let mut copy = *self;
         let moves = copy.get_all_moves();
         moves
             .into_iter()
@@ -311,8 +307,7 @@ impl Widget for Board {
             }
             rows.push(Row::new(row).height(2));
         }
-
-        let _table = Table::new(rows)
+        Table::new(rows)
             .style(Style::default().fg(Color::White))
             .column_spacing(0)
             .widths(&[
@@ -346,7 +341,7 @@ impl Board {
         }
     }
 
-    fn get_square_style(&self, col: u8, row: u8, highlights: &Vec<Option<Color>>) -> Style {
+    fn get_square_style(&self, col: u8, row: u8, highlights: &[Option<Color>]) -> Style {
         let ix = row * 8 + col;
         if let Some(Some(c)) = highlights.get(ix as usize) {
             return Style::default().bg(*c);
@@ -367,7 +362,7 @@ impl Board {
                     Ok(p) => p,
                     Err(_e) => return highlights,
                 };
-                let mut copy = self.state.clone();
+                let mut copy = self.state;
                 piece
                     .get_moves(
                         &self.state.board,
@@ -449,11 +444,11 @@ impl Move {
         castling: Option<AuxMove>,
     ) -> Move {
         Move {
-            from: from,
-            to: to,
-            promotion: promotion,
-            en_passant: en_passant,
-            castling: castling,
+            from,
+            to,
+            promotion,
+            en_passant,
+            castling,
         }
     }
     pub fn new(from: Position, to: Position) -> Move {
@@ -522,10 +517,10 @@ fn move_to_ix(c: u8, r: u8) -> u8 {
         vec![32, 33, 34, 35, 36, 37, 38, 39],
         vec![24, 25, 26, 27, 28, 29, 30, 31],
         vec![16, 17, 18, 19, 20, 21, 22, 23],
-        vec![08, 09, 10, 11, 12, 13, 14, 15],
-        vec![00, 01, 02, 03, 04, 05, 06, 07],
+        vec![8, 9, 10, 11, 12, 13, 14, 15],
+        vec![0, 1, 2, 3, 4, 5, 6, 7],
     ];
-    return m[r as usize][c as usize];
+    m[r as usize][c as usize]
 }
 
 #[cfg(test)]

@@ -96,7 +96,7 @@ async fn run_app<B: Backend>(
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_secs(0));
+            .unwrap_or(Duration::from_secs(0));
 
         if crossterm::event::poll(timeout)? {
             match event::read()? {

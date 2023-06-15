@@ -10,19 +10,19 @@ pub enum ParsingError {
     ErrorParsingFEN,
 }
 
-pub struct FEN {
+pub struct Fen {
     pub board: [u8; 64],
     pub white_to_move: bool,
     pub castling: u8,
 }
 
-impl FEN {
+impl Fen {
     pub fn parse(value: String) -> Result<Self> {
         let mut board = [0u8; 64];
         let position = value
             .split_whitespace()
-            .nth(0)
-            .ok_or_else(|| ParsingError::ErrorParsingFEN)?
+            .next()
+            .ok_or(ParsingError::ErrorParsingFEN)?
             .chars();
         let mut ix = 0;
         for ch in position.into_iter() {
@@ -42,12 +42,12 @@ impl FEN {
         let turn = value
             .split_whitespace()
             .nth(1)
-            .unwrap_or_else(|| "w")
+            .unwrap_or("w")
             .to_lowercase();
         let castling = value
             .split_whitespace()
             .nth(2)
-            .unwrap_or_else(|| "")
+            .unwrap_or("")
             .chars()
             .fold(0, |acc, c| match c {
                 'K' => acc + 8,
@@ -56,17 +56,17 @@ impl FEN {
                 'q' => acc + 1,
                 _ => acc,
             });
-        let _enpassant = value.split_whitespace().nth(3).unwrap_or_else(|| "");
+        let _enpassant = value.split_whitespace().nth(3).unwrap_or("");
         // TODO: Parse timers
-        Ok(FEN {
-            board: board,
+        Ok(Fen {
+            board,
             white_to_move: turn == "w",
-            castling: castling,
+            castling,
         })
     }
 }
 
-impl Display for FEN {
+impl Display for Fen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for c in 0..8 {
             let mut empty = 0;
