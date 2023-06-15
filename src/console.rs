@@ -69,13 +69,17 @@ impl Console {
     }
 
     pub fn move_history_forwards(&mut self) {
-        if self.history_ix < self.history.len() - 1 {
+        let hist_len = self.history.len();
+        if hist_len < 1 {
+            return;
+        }
+        if self.history_ix < hist_len - 1 {
             self.history_ix += 1;
             self.reset();
             self.set_active_cursor();
             self.console
                 .insert_str(self.history[self.history_ix].clone());
-        } else if self.history_ix == self.history.len() - 1 {
+        } else if self.history_ix == hist_len - 1 {
             self.history_ix += 1;
             self.reset();
             self.set_active_cursor();
