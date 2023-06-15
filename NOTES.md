@@ -28,7 +28,7 @@ Rank from index: (i * 8 + j) % 8
 - [x] Highlight legal moves
 - [ ] Highlight best move
 - [ ] Improve `:move` parsing
-    - [ ] Support castling
+    - [x] Support castling
     - [ ] Support en-pasant
     - [ ] Support non-queen promotion
 

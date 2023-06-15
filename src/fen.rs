@@ -1,8 +1,14 @@
 use std::fmt::{Display, Write};
 
+use crate::piece::Piece;
 use anyhow::Result;
+use thiserror::Error;
 
-use crate::{board::ParsingError, piece::Piece};
+#[derive(Clone, Copy, Error, Debug)]
+pub enum ParsingError {
+    #[error("error parsing fen")]
+    ErrorParsingFEN,
+}
 
 pub struct FEN {
     pub board: [u8; 64],

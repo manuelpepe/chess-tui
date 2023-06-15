@@ -3,6 +3,8 @@ use thiserror::Error;
 use tui::style::{Color, Style};
 use tui_textarea::TextArea;
 
+use crate::board::{Move, Position};
+
 pub const CMD_PREFIX: &str = "> ";
 
 pub fn new_console() -> TextArea<'static> {
@@ -97,13 +99,16 @@ impl Console {
     }
 }
 
-#[derive(Debug, Clone, Copy, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum CommandError {
     #[error("no command received")]
     NoCommand,
 
     #[error("invalid command")]
     InvalidCommand,
+
+    #[error("error parsing move: {mov}")]
+    MoveParsingError { mov: String },
 }
 
 #[derive(Debug, Clone)]
@@ -112,7 +117,7 @@ pub enum Command {
     SetPosition(String),
     StartSeach,
     StopSearch,
-    AlgebraicNotation(String),
+    MakeMove(ParsedMove),
 }
 
 impl Command {
@@ -139,7 +144,8 @@ impl Command {
             ":search" => Some(Command::StartSeach),
             ":stop" => Some(Command::StopSearch),
             ":move" if command.len() > 6 => {
-                Some(Command::AlgebraicNotation(command[6..].to_string()))
+                let mov = parse_algebraic_move(command[6..].to_string())?;
+                Some(Command::MakeMove(mov))
             }
             _ => None,
         } {
@@ -147,4 +153,47 @@ impl Command {
         };
         Err(CommandError::InvalidCommand.into())
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ParsedMove {
+    Basic { mov: Move },
+    CastleLong,
+    CastleShort,
+}
+
+/// Parse long algebraic notation move. i.e. e2e4
+fn parse_algebraic_move(mov: String) -> Result<ParsedMove> {
+    let mov = mov.trim();
+    if mov == "0-0" || mov == "O-O" {
+        return Ok(ParsedMove::CastleShort);
+    }
+    if mov == "0-0-0" || mov == "O-O-O" {
+        return Ok(ParsedMove::CastleLong);
+    }
+    let values = mov
+        .chars()
+        .take(4)
+        .filter_map(|c| match c {
+            'a'..='h' => Some(c as u8 - 97),
+            '1'..='8' => Some((c.to_digit(10).unwrap() - 1) as u8),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if values.len() != 4 {
+        let mov = mov.to_string();
+        return Err(CommandError::MoveParsingError { mov }.into());
+    }
+    Ok(ParsedMove::Basic {
+        mov: Move::new(
+            Position::Algebraic {
+                rank: values[0],
+                file: values[1],
+            },
+            Position::Algebraic {
+                rank: values[2],
+                file: values[3],
+            },
+        ),
+    })
 }

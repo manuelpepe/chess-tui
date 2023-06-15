@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::Result;
 use thiserror::Error;
 use tui::{
@@ -10,15 +12,6 @@ use crate::{
     fen::FEN,
     piece::{Piece, PieceError},
 };
-
-#[derive(Clone, Copy, Error, Debug)]
-pub enum ParsingError {
-    #[error("error parsing fen")]
-    ErrorParsingFEN,
-
-    #[error("error parsing move")]
-    MoveParsingError,
-}
 
 #[derive(Clone, Copy, Error, Debug)]
 pub enum MoveError {
@@ -304,6 +297,10 @@ impl Board {
         self.state.has_grabbed_piece()
     }
 
+    pub fn white_to_move(&self) -> bool {
+        self.state.white_to_move
+    }
+
     pub fn get_legal_moves(&self) -> Vec<Move> {
         self.state.get_legal_moves()
     }
@@ -488,8 +485,28 @@ impl Move {
         Move::new_with_all(from, to, None, None, Some(castling))
     }
 
-    pub fn in_bounds(&self, board: Board) -> bool {
-        board.in_bounds(self.from) && board.in_bounds(self.to)
+    pub fn castle_long(white_to_move: bool) -> Move {
+        let f = match white_to_move {
+            true => 0,
+            false => 7,
+        };
+        let king = Position::Algebraic { rank: 4, file: f };
+        let rook = Position::Algebraic { rank: 0, file: f };
+        let king_to = Position::Algebraic { rank: 2, file: f };
+        let rook_to = Position::Algebraic { rank: 3, file: f };
+        Move::new_castling(king, king_to, (rook, rook_to))
+    }
+
+    pub fn castle_short(white_to_move: bool) -> Move {
+        let f = match white_to_move {
+            true => 0,
+            false => 7,
+        };
+        let king = Position::Algebraic { rank: 4, file: f };
+        let rook = Position::Algebraic { rank: 7, file: f };
+        let king_to = Position::Algebraic { rank: 6, file: f };
+        let rook_to = Position::Algebraic { rank: 5, file: f };
+        Move::new_castling(king, king_to, (rook, rook_to))
     }
 }
 

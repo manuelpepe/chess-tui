@@ -1,4 +1,6 @@
 use crate::{
+    board::{Move, Position},
+    console::{Command, Console, ParsedMove, CMD_PREFIX},
     tree::StatefulTree,
 };
 use anyhow::Result;
@@ -181,18 +183,17 @@ impl<'a> App<'a> {
                 Ok(_) => self.searching = false,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
             },
-            Command::AlgebraicNotation(mov) => match parse_algebraic_move(mov) {
-                Ok(mov) if mov.in_bounds(self.board) => {
-                    if let Err(err) = self.board.make_move(mov) {
-                        self.console.log_line(format!("err: {}", err));
-                    };
-                }
-                Ok(mov) => {
-                    self.console
-                        .log_line(format!("err: invalid move: {:?}", mov));
-                }
-                Err(err) => self.console.log_line(format!("err: {}", err)),
-            },
+            Command::MakeMove(mov) => {
+                let mov = match mov {
+                    ParsedMove::Basic { mov } => mov,
+                    ParsedMove::CastleShort => Move::castle_short(self.board.white_to_move()),
+                    ParsedMove::CastleLong => Move::castle_long(self.board.white_to_move()),
+                };
+                if let Err(err) = self.board.make_move(mov) {
+                    self.console.log_line(format!("err: {}", err));
+                };
+                self.update_move_tree();
+            }
         }
     }
 
@@ -285,32 +286,6 @@ fn get_relative_positions(event: MouseEvent) -> Option<Position> {
         }
     }
     None
-}
-
-/// Parse long algebraic notation move. i.e. e2e4
-fn parse_algebraic_move(mov: String) -> Result<Move> {
-    let values = mov
-        .chars()
-        .take(4)
-        .filter_map(|c| match c {
-            'a'..='h' => Some(c as u8 - 97),
-            '1'..='8' => Some((c.to_digit(10).unwrap() - 1) as u8),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    if values.len() != 4 {
-        return Err(ParsingError::MoveParsingError.into());
-    }
-    Ok(Move::new(
-        Position::Algebraic {
-            rank: values[0],
-            file: values[1],
-        },
-        Position::Algebraic {
-            rank: values[2],
-            file: values[3],
-        },
-    ))
 }
 
 /// Keeps the state of the tabs in the UI.
