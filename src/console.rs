@@ -105,6 +105,10 @@ impl Console {
                 .insert_str(self.history[self.history_ix].clone());
         }
     }
+
+    pub fn scroll(&mut self, scrolling: impl Into<tui_textarea::Scrolling>) {
+        self.log.scroll(scrolling);
+    }
 }
 
 #[derive(Debug, Clone, Error)]

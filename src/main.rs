@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -24,6 +24,7 @@ mod board;
 mod cli;
 mod console;
 mod fen;
+mod help;
 mod piece;
 mod tree;
 mod ui;
@@ -114,7 +115,12 @@ async fn run_app<B: Backend>(
                     KeyCode::Down => app.on_down(),
                     _ => {}
                 },
-                Event::Mouse(event) => app.on_mouse(event).await,
+                Event::Mouse(event) => match event.kind {
+                    MouseEventKind::Up(_) | MouseEventKind::Down(_) => app.on_mouse(event).await,
+                    MouseEventKind::ScrollDown => app.on_down(),
+                    MouseEventKind::ScrollUp => app.on_up(),
+                    _ => {}
+                },
                 _ => {}
             }
         }

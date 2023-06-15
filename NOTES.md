@@ -27,9 +27,10 @@ Rank from index: (i * 8 + j) % 8
 - [x] Highlight grabbed piece
 - [x] Highlight legal moves
 - [ ] Highlight best move
-- [ ] Add scrolling:
-    - [ ] Help window
-    - [ ] Console
+- [x] Add scrolling:
+    - [x] Help window
+    - [x] Console
+    - [x] MouseWheel
 - [ ] Improve `:move` parsing
     - [x] Support castling
     - [ ] Support en-pasant

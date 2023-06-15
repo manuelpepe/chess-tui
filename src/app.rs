@@ -1,6 +1,7 @@
 use crate::{
-    board::{Move, Position},
+    board::{Board, Move, Position},
     console::{Command, Console, ParsedMove, CMD_PREFIX},
+    help::HelpWindow,
     tree::StatefulTree,
 };
 use anyhow::Result;
@@ -9,8 +10,6 @@ use async_uci::engine::{ChessEngine, EngineOption, Evaluation};
 use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use tui_textarea::CursorMove;
 use tui_tree_widget::TreeItem;
-
-use crate::board::Board;
 
 pub const INITIAL_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
 
@@ -21,13 +20,14 @@ pub struct App<'a> {
     pub board: Board,
     pub flipped_board: bool,
     pub console: Console,
-    pub in_console: bool,
+    pub in_console_input: bool,
     pub engine: &'a mut dyn ChessEngine,
     pub last_engine_eval: Evaluation,
     pub searching: bool,
     pub piece_to_grab: Option<Position>,
     pub in_moves_tree: bool,
     pub moves_tree: StatefulTree<'a>,
+    pub help: HelpWindow,
 }
 
 /// Functional Implementations
@@ -44,13 +44,14 @@ impl<'a> App<'a> {
             board: Board::from_fen(fen)?,
             flipped_board: false,
             console: Console::new(),
-            in_console: false,
+            in_console_input: false,
             engine,
             last_engine_eval: Evaluation::default(),
             piece_to_grab: None,
             searching: false,
             in_moves_tree: false,
             moves_tree: StatefulTree::with_items(Vec::new()),
+            help: HelpWindow::new(),
         };
         app.update_move_tree();
         Ok(app)
@@ -103,14 +104,14 @@ impl<'a> App<'a> {
     }
 
     fn focus_console(&mut self, buffered: char) {
-        self.in_console = true;
+        self.in_console_input = true;
         self.console.set_active_cursor();
         self.console.insert_char(buffered);
     }
 
     fn reset_console(&mut self) {
         self.console.reset();
-        self.in_console = false;
+        self.in_console_input = false;
     }
 
     fn flip_board(&mut self) {
@@ -131,7 +132,7 @@ impl<'a> App<'a> {
     }
 
     pub async fn on_enter(&mut self) {
-        if self.in_console {
+        if self.in_console_input {
             match self.console.parse_command() {
                 Ok(cmd) => self.on_command(cmd).await,
                 Err(err) => self.console.log_line(format!("err: {}", err)),
@@ -149,26 +150,26 @@ impl<'a> App<'a> {
     }
 
     pub fn on_escape(&mut self) {
-        if self.in_console {
+        if self.in_console_input {
             self.reset_console();
-            self.in_console = false;
+            self.in_console_input = false;
         }
     }
 
     pub fn on_backspace(&mut self) {
-        if self.in_console && self.console.console.cursor().1 > CMD_PREFIX.len() {
+        if self.in_console_input && self.console.console.cursor().1 > CMD_PREFIX.len() {
             self.console.console.delete_char();
         }
     }
 
     pub fn on_delete(&mut self) {
-        if self.in_console {
+        if self.in_console_input {
             self.console.console.delete_next_char();
         }
     }
 
     pub fn on_left(&mut self) {
-        if self.in_console {
+        if self.in_console_input {
             self.console.console.move_cursor(CursorMove::Back)
         }
         if self.in_moves_tree {
@@ -177,7 +178,7 @@ impl<'a> App<'a> {
     }
 
     pub fn on_right(&mut self) {
-        if self.in_console {
+        if self.in_console_input {
             self.console.console.move_cursor(CursorMove::Forward)
         }
         if self.in_moves_tree {
@@ -186,7 +187,12 @@ impl<'a> App<'a> {
     }
 
     pub fn on_up(&mut self) {
-        if self.in_console {
+        match self.tabs.index {
+            1 => self.console.scroll((-1, 0)),
+            2 => self.help.scroll((-1, 0)),
+            _ => {}
+        }
+        if self.in_console_input {
             self.console.move_history_backwards()
         }
         if self.in_moves_tree {
@@ -195,7 +201,12 @@ impl<'a> App<'a> {
     }
 
     pub fn on_down(&mut self) {
-        if self.in_console {
+        match self.tabs.index {
+            1 => self.console.scroll((1, 0)),
+            2 => self.help.scroll((1, 0)),
+            _ => {}
+        }
+        if self.in_console_input {
             self.console.move_history_forwards()
         }
         if self.in_moves_tree {
@@ -205,7 +216,7 @@ impl<'a> App<'a> {
 
     pub async fn on_key(&mut self, c: char) {
         match c {
-            _ if self.in_console => self.console.insert_char(c),
+            _ if self.in_console_input => self.console.insert_char(c),
             'q' => self.should_quit = true,
             ':' => self.focus_console(':'),
             '!' => self.focus_console('!'),
