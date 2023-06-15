@@ -1,7 +1,72 @@
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 use thiserror::Error;
 
 use crate::board::{Move, Position};
+
+#[derive(Clone, Copy, Debug)]
+pub enum CastleRigthsMask {
+    WhiteKingside = 8,
+    WhiteQueenside = 4,
+    BlackKingside = 2,
+    BlackQueenside = 1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct CastleRights {
+    rights: u8,
+}
+
+impl CastleRights {
+    pub fn set(&mut self, mask: CastleRigthsMask) {
+        self.rights |= mask as u8;
+    }
+
+    pub fn unset(&mut self, mask: CastleRigthsMask) {
+        self.rights &= !(mask as u8);
+    }
+
+    pub fn get(&self, mask: CastleRigthsMask) -> bool {
+        self.rights & (mask as u8) > 0
+    }
+
+    pub fn get_u8(&self) -> u8 {
+        self.rights
+    }
+}
+
+impl Display for CastleRights {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.get(CastleRigthsMask::WhiteKingside) {
+            f.write_char('K')?;
+        }
+        if self.get(CastleRigthsMask::WhiteQueenside) {
+            f.write_char('Q')?;
+        }
+        if self.get(CastleRigthsMask::BlackKingside) {
+            f.write_char('k')?;
+        }
+        if self.get(CastleRigthsMask::BlackQueenside) {
+            f.write_char('q')?;
+        }
+        Ok(())
+    }
+}
+
+impl From<&str> for CastleRights {
+    fn from(val: &str) -> Self {
+        let rights = val.chars().fold(CastleRights::default(), |mut acc, c| {
+            match c {
+                'K' => acc.set(CastleRigthsMask::WhiteKingside),
+                'Q' => acc.set(CastleRigthsMask::WhiteQueenside),
+                'k' => acc.set(CastleRigthsMask::BlackKingside),
+                'q' => acc.set(CastleRigthsMask::BlackQueenside),
+                _ => {}
+            }
+            acc
+        });
+        rights
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Piece {
@@ -73,7 +138,7 @@ impl Piece {
         board: &[u8; 64],
         position: u8,
         last_move: Option<Move>,
-        castling_rights: u8,
+        castle_rights: CastleRights,
         threatmap: &[u8; 64],
     ) -> Vec<Move> {
         match *self {
@@ -82,7 +147,7 @@ impl Piece {
                 moves.append(&mut self.get_castling_moves(
                     board,
                     position,
-                    castling_rights,
+                    castle_rights,
                     threatmap,
                 ));
                 moves
@@ -99,14 +164,24 @@ impl Piece {
         &self,
         board: &[u8; 64],
         position: u8,
-        castling_rights: u8,
+        castle_rights: CastleRights,
         threatmap: &[u8; 64],
     ) -> Vec<Move> {
         let king_ix = position;
         let mut moves = Vec::new();
         let (ks_right, qs_right, ks_rook, qs_rook) = match self.is_white() {
-            true => (castling_rights & 8 > 0, castling_rights & 4 > 0, 63, 56),
-            false => (castling_rights & 2 > 0, castling_rights & 1 > 0, 7, 0),
+            true => (
+                castle_rights.get(CastleRigthsMask::WhiteKingside),
+                castle_rights.get(CastleRigthsMask::WhiteQueenside),
+                63,
+                56,
+            ),
+            false => (
+                castle_rights.get(CastleRigthsMask::BlackKingside),
+                castle_rights.get(CastleRigthsMask::BlackQueenside),
+                7,
+                0,
+            ),
         };
         if ks_right {
             let rook_path_clear = path_clear(board, ks_rook, king_ix + 1, &[0; 64]);

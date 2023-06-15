@@ -10,7 +10,7 @@ use tui::{
 
 use crate::{
     fen::Fen,
-    piece::{Piece, PieceError},
+    piece::{CastleRights, CastleRigthsMask, Piece, PieceError},
 };
 
 #[derive(Clone, Copy, Error, Debug)]
@@ -38,10 +38,7 @@ pub struct BoardState {
     pub grabbed_piece: Option<u8>,
     pub last_move: Option<Move>,
     pub threatmap: [u8; 64],
-
-    /// Castling rights, 2 bits for each side, 4 bit padding:
-    /// [XXXX KQkq]
-    pub castling: u8,
+    pub castling: CastleRights,
 }
 
 impl BoardState {
@@ -100,25 +97,31 @@ impl BoardState {
         // check mov.to as move should already been made
         let piece = Piece::try_from(self.board[mov.to.as_ix() as usize]);
         let (ks_right, qs_right, ks_rook, qs_rook) = match self.white_to_move {
-            true => (8, 4, 63, 56),
-            false => (2, 1, 7, 0),
+            true => (
+                CastleRigthsMask::WhiteKingside,
+                CastleRigthsMask::WhiteQueenside,
+                63,
+                56,
+            ),
+            false => (
+                CastleRigthsMask::BlackKingside,
+                CastleRigthsMask::BlackQueenside,
+                7,
+                0,
+            ),
         };
         match piece {
             Ok(Piece::WhiteRook | Piece::BlackRook) => {
-                if self.castling & ks_right > 0 && mov.from.as_ix() == ks_rook {
-                    self.castling -= ks_right;
+                if mov.from.as_ix() == ks_rook {
+                    self.castling.unset(ks_right)
                 }
-                if self.castling & qs_right > 0 && mov.from.as_ix() == qs_rook {
-                    self.castling -= qs_right;
+                if mov.from.as_ix() == qs_rook {
+                    self.castling.unset(qs_right);
                 }
             }
             Ok(Piece::WhiteKing | Piece::BlackKing) => {
-                if self.castling & ks_right > 0 {
-                    self.castling -= ks_right;
-                }
-                if self.castling & qs_right > 0 {
-                    self.castling -= qs_right;
-                }
+                self.castling.unset(ks_right);
+                self.castling.unset(qs_right);
             }
             _ => {}
         }

@@ -37,10 +37,11 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Improve `Legal Moves` pane:
     - [ ] Make move by clicking enter
     - [ ] Toggle grouping by piece
-
+- [ ] Migrate from `tui-rs` to `ratatui`
 
 ### Mid-term
 
+- [ ] Track material imbalance
 - [ ] Move history
 - [ ] Settings 
 - [ ] Clocks for playing

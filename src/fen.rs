@@ -1,6 +1,6 @@
 use std::fmt::{Display, Write};
 
-use crate::piece::Piece;
+use crate::piece::{CastleRights, Piece};
 use anyhow::Result;
 use thiserror::Error;
 
@@ -10,10 +10,11 @@ pub enum ParsingError {
     ErrorParsingFEN,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fen {
     pub board: [u8; 64],
     pub white_to_move: bool,
-    pub castling: u8,
+    pub castling: CastleRights,
 }
 
 impl Fen {
@@ -44,19 +45,7 @@ impl Fen {
             .nth(1)
             .unwrap_or("w")
             .to_lowercase();
-        let castling = value
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or("")
-            .chars()
-            .fold(0, |acc, c| match c {
-                'K' => acc + 8,
-                'Q' => acc + 4,
-                'k' => acc + 2,
-                'q' => acc + 1,
-                _ => acc,
-            });
-        let _enpassant = value.split_whitespace().nth(3).unwrap_or("");
+        let castling = CastleRights::from(value.split_whitespace().nth(2).unwrap_or(""));
         // TODO: Parse timers
         Ok(Fen {
             board,
@@ -93,24 +82,8 @@ impl Display for Fen {
         f.write_char(' ')?;
         f.write_str(if self.white_to_move { "w" } else { "b" })?;
         f.write_char(' ')?;
-        if self.castling & 8 > 0 {
-            f.write_char('K')?;
-        }
-        if self.castling & 4 > 0 {
-            f.write_char('Q')?;
-        }
-        if self.castling & 2 > 0 {
-            f.write_char('k')?;
-        }
-        if self.castling & 1 > 0 {
-            f.write_char('q')?;
-        }
-        f.write_char(' ')?;
-        f.write_char('-')?;
-        f.write_char(' ')?;
-        f.write_char('0')?;
-        f.write_char(' ')?;
-        f.write_char('1')?;
+        f.write_str(self.castling.to_string().as_str())?;
+        f.write_str(" - 0 1")?;
         Ok(())
     }
 }
