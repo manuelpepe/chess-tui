@@ -249,12 +249,14 @@ impl BoardState {
 #[derive(Clone, Copy, Debug)]
 pub struct Board {
     state: BoardState,
+    flipped_board: bool,
 }
 
 impl Board {
     pub fn from_fen(fen: String) -> Result<Board> {
         Ok(Board {
             state: BoardState::from_fen(fen)?,
+            flipped_board: false,
         })
     }
 
@@ -293,6 +295,10 @@ impl Board {
     pub fn pass_turn(&mut self) {
         self.state.pass_turn()
     }
+
+    pub fn set_flipped(&mut self, flipped: bool) {
+        self.flipped_board = flipped;
+    }
 }
 
 impl Widget for Board {
@@ -302,7 +308,10 @@ impl Widget for Board {
         }
         let highlight_squares = self.get_grabbed_piece_highlights();
         let mut rows = Vec::with_capacity(8);
-        for r in 0..8 {
+        for mut r in 0..8 {
+            if self.flipped_board {
+                r = 7 - r;
+            }
             let mut row = Vec::with_capacity(8);
             for c in 0..8 {
                 let ix: u8 = r * 8 + c;
@@ -399,7 +408,7 @@ pub enum Position {
     /// For example, the following comparisons are true:
     ///     * a8: Position::Algebraic {rank: 0, file: 7} == Position::Relative { col: 0, row: 0 }
     ///     * h1: Position::Algebraic {rank: 7, file: 0} == Position::Relative { col: 7, row: 7 }
-    Relative { col: u8, row: u8 },
+    Relative { col: u8, row: u8, flip: bool },
 
     /// Index Positions are just the index of the square in the 1d board array.
     Index { ix: u8 },
@@ -409,7 +418,10 @@ impl Position {
     pub fn as_ix(&self) -> u8 {
         match self {
             Position::Algebraic { rank, file } => move_to_ix(*rank, *file),
-            Position::Relative { col, row } => col + row * 8,
+            Position::Relative { col, row, flip } => match *flip {
+                true => move_to_ix(*col, *row),
+                false => col + row * 8,
+            },
             Position::Index { ix } => *ix,
         }
     }
@@ -549,12 +561,20 @@ mod test {
             // a8
             (
                 Position::Algebraic { rank: 0, file: 7 },
-                Position::Relative { col: 0, row: 0 },
+                Position::Relative {
+                    col: 0,
+                    row: 0,
+                    flip: false,
+                },
             ),
             // h1
             (
                 Position::Algebraic { rank: 7, file: 0 },
-                Position::Relative { col: 7, row: 7 },
+                Position::Relative {
+                    col: 7,
+                    row: 7,
+                    flip: false,
+                },
             ),
         ];
         for (a, b) in comps.iter() {

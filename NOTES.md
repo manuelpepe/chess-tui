@@ -52,7 +52,7 @@ Rank from index: (i * 8 + j) % 8
     - [ ] `:fen <fen>`: set a position on the board
     - [ ] `:pgn <pgn>`: load pgn to move history
     - [x] `:passturn`: pass turn
-    - [ ] `:flipboard`: flip board vertically
+    - [x] `:flipboard`: flip board vertically
 
 
 ### Long-term

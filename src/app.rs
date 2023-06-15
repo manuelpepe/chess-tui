@@ -19,6 +19,7 @@ pub struct App<'a> {
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
     pub board: Board,
+    pub flipped_board: bool,
     pub console: Console,
     pub in_console: bool,
     pub engine: &'a mut dyn ChessEngine,
@@ -41,6 +42,7 @@ impl<'a> App<'a> {
             should_quit: false,
             tabs: TabsState::new(vec!["Board", "Console", "Help"]),
             board: Board::from_fen(fen)?,
+            flipped_board: false,
             console: Console::new(),
             in_console: false,
             engine,
@@ -109,6 +111,11 @@ impl<'a> App<'a> {
     fn reset_console(&mut self) {
         self.console.reset();
         self.in_console = false;
+    }
+
+    fn flip_board(&mut self) {
+        self.flipped_board = !self.flipped_board;
+        self.board.set_flipped(self.flipped_board);
     }
 }
 
@@ -239,18 +246,19 @@ impl<'a> App<'a> {
                 self.board.pass_turn();
                 self.update_move_tree();
             }
+            Command::FlipBoard => self.flip_board(),
         }
     }
 
     pub async fn on_mouse(&mut self, event: MouseEvent) {
         match event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                if let Some(p) = get_relative_positions(event) {
+                if let Some(p) = get_relative_positions(event, self.flipped_board) {
                     self.piece_to_grab = Some(p);
                 }
             }
             MouseEventKind::Up(MouseButton::Left) => {
-                let pos = match get_relative_positions(event) {
+                let pos = match get_relative_positions(event, self.flipped_board) {
                     Some(p) => p,
                     None => return, // out of bounds
                 };
@@ -282,7 +290,7 @@ impl<'a> App<'a> {
 }
 
 /// Get the clicked position relative to the board.
-fn get_relative_positions(event: MouseEvent) -> Option<Position> {
+fn get_relative_positions(event: MouseEvent, flipped: bool) -> Option<Position> {
     // tui-rs makes it dificult to calculate the position of a mouse click relative to a widget
     // the workaround is knowing that the board always starts at the same absolute position in the screen (x=1, y=3)
     // and the squares have a fixed size (4w 1h).
@@ -297,6 +305,7 @@ fn get_relative_positions(event: MouseEvent) -> Option<Position> {
                 return Some(Position::Relative {
                     col: col as u8,
                     row: row as u8,
+                    flip: flipped,
                 });
             }
         }

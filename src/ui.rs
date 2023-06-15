@@ -146,6 +146,8 @@ pub fn draw_help<B: Backend>(f: &mut Frame<B>, _app: &mut App, area: Rect) {
         ),
         (":search", "Start searching for best move"),
         (":stop", "Stop searching for best move"),
+        (":flipboard", "Flip board vertically"),
+        (":passturn", "Pass current player turn"),
         (":q", "Quit"),
     ];
     let legal_moves_shortcuts = [

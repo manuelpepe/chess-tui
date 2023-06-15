@@ -127,6 +127,7 @@ pub enum Command {
     StopSearch,
     MakeMove(ParsedMove),
     PassTurn,
+    FlipBoard,
 }
 
 impl Command {
@@ -158,6 +159,7 @@ impl Command {
         let cmd = match word {
             "exit" | ":q" => Command::Exit,
             ":passturn" => Command::PassTurn,
+            ":flipboard" => Command::FlipBoard,
             ":search" => Command::StartSeach,
             ":stop" => Command::StopSearch,
             ":set-position" if command.len() > 13 => {

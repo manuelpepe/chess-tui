@@ -30,4 +30,6 @@ To enter the command line press ':', then use any of:
 * `:search`: start searching current position
 * `:stop`: stop searching current position
 * `:move <mv>`: play move on the board. long algebraic notation is used (i.e. e2e4)
+* `:passturn`: pass current player turn
+* `:flipboard`: flip board vertically
 * `:q` or `exit`: exit the program
