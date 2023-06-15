@@ -52,9 +52,7 @@ impl BoardState {
             castling: fen.castling,
             threatmap: [0; 64],
         };
-        state.white_to_move = !state.white_to_move;
-        state.update_threatmaps();
-        state.white_to_move = !state.white_to_move;
+        state.update_threatmap();
         Ok(state)
     }
 
@@ -73,7 +71,7 @@ impl BoardState {
 
     pub fn make_move(&mut self, mov: Move) -> Result<()> {
         if mov.from == mov.to {
-            return Ok(());
+            return Ok(()); // TODO: Change to an error
         }
         if !self.is_legal(&mov) {
             return Err(MoveError::IllegalMove { mov }.into());
@@ -83,16 +81,17 @@ impl BoardState {
             self.move_piece(Move::new(sm.0, sm.1));
         }
         self.update_castling_rights(&mov);
-        self.update_threatmaps();
-        self.white_to_move = !self.white_to_move;
+        self.pass_turn();
         Ok(())
     }
 
-    fn update_threatmaps(&mut self) {
+    fn update_threatmap(&mut self) {
+        self.white_to_move = !self.white_to_move;
         self.threatmap = [0; 64];
         for mov in self.get_all_moves() {
             self.threatmap[mov.to.as_ix() as usize] = 1;
         }
+        self.white_to_move = !self.white_to_move;
     }
 
     fn update_castling_rights(&mut self, mov: &Move) {
@@ -225,27 +224,25 @@ impl BoardState {
     }
 
     pub fn leaves_king_in_check(&mut self, mov: Move) -> bool {
-        // backup for later restore
         let backup_from = self.board[mov.from.as_ix() as usize];
         let backup_to = self.board[mov.to.as_ix() as usize];
-        // change state
         self.move_piece(mov);
-        self.white_to_move = !self.white_to_move;
-        self.update_threatmaps();
-        // look for checks
+        self.update_threatmap(); // in case of discovered checks
         let king_code = match self.white_to_move {
-            true => Piece::BlackKing.into(),
-            false => Piece::WhiteKing.into(),
+            true => Piece::WhiteKing.into(),
+            false => Piece::BlackKing.into(),
         };
         let king_ix: usize = self.board.iter().position(|&p| p == king_code).unwrap();
         let check = self.threatmap[king_ix] > 0;
-        // restore state
         self.board[mov.from.as_ix() as usize] = backup_from;
         self.board[mov.to.as_ix() as usize] = backup_to;
-        self.white_to_move = !self.white_to_move;
-        self.update_threatmaps();
-
+        self.update_threatmap();
         check
+    }
+
+    pub fn pass_turn(&mut self) {
+        self.white_to_move = !self.white_to_move;
+        self.update_threatmap();
     }
 }
 
@@ -291,6 +288,10 @@ impl Board {
 
     pub fn get_legal_moves(&self) -> Vec<Move> {
         self.state.get_legal_moves()
+    }
+
+    pub fn pass_turn(&mut self) {
+        self.state.pass_turn()
     }
 }
 

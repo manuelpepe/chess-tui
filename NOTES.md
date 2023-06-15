@@ -51,7 +51,7 @@ Rank from index: (i * 8 + j) % 8
     - [ ] `!pgn`: get PGN of current move history
     - [ ] `:fen <fen>`: set a position on the board
     - [ ] `:pgn <pgn>`: load pgn to move history
-    - [ ] `:swapturn`: swap current turn
+    - [x] `:passturn`: pass turn
     - [ ] `:flipboard`: flip board vertically
 
 

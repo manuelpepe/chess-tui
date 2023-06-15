@@ -235,6 +235,10 @@ impl<'a> App<'a> {
                 };
                 self.update_move_tree();
             }
+            Command::PassTurn => {
+                self.board.pass_turn();
+                self.update_move_tree();
+            }
         }
     }
 

@@ -126,40 +126,50 @@ pub enum Command {
     StartSeach,
     StopSearch,
     MakeMove(ParsedMove),
+    PassTurn,
 }
 
 impl Command {
-    pub fn from_string(command: String) -> Result<Command> {
+    pub fn from_string(command: String) -> Result<Self> {
+        let ch_cmd = Self::parse_char_cmd(command.clone());
+        if ch_cmd.is_ok() {
+            return ch_cmd;
+        }
+        Self::parse_word_cmd(command)
+    }
+
+    fn parse_char_cmd(command: String) -> Result<Self> {
         let ch = match command.chars().next() {
             Some(c) => c,
             None => bail!(CommandError::NoCommand),
         };
-        if let Some(cmd) = match ch {
-            '!' => Some(Command::SetPosition(command[1..].to_string())),
-            _ => None,
-        } {
-            return Ok(cmd);
+        let cmd = match ch {
+            '!' => Command::SetPosition(command[1..].to_string()),
+            _ => bail!(CommandError::InvalidCommand),
         };
+        Ok(cmd)
+    }
+
+    fn parse_word_cmd(command: String) -> Result<Self> {
         let word = match command.split_whitespace().next() {
             Some(w) => w,
             None => bail!(CommandError::NoCommand),
         };
-        if let Some(cmd) = match word {
-            "exit" | ":q" => Some(Command::Exit),
+        let cmd = match word {
+            "exit" | ":q" => Command::Exit,
+            ":passturn" => Command::PassTurn,
+            ":search" => Command::StartSeach,
+            ":stop" => Command::StopSearch,
             ":set-position" if command.len() > 13 => {
-                Some(Command::SetPosition(command[13..].to_string()))
+                Command::SetPosition(command[13..].to_string())
             }
-            ":search" => Some(Command::StartSeach),
-            ":stop" => Some(Command::StopSearch),
             ":move" if command.len() > 6 => {
                 let mov = parse_algebraic_move(command[6..].to_string())?;
-                Some(Command::MakeMove(mov))
+                Command::MakeMove(mov)
             }
-            _ => None,
-        } {
-            return Ok(cmd);
+            _ => bail!(CommandError::InvalidCommand),
         };
-        Err(CommandError::InvalidCommand.into())
+        Ok(cmd)
     }
 }
 
