@@ -36,7 +36,7 @@ impl<'a> App<'a> {
     }
 
     pub fn from_fen(engine: &'a mut dyn ChessEngine, fen: String) -> Result<App<'a>> {
-        Ok(App {
+        let mut app = App {
             title: "Chess TUI".to_string(),
             should_quit: false,
             tabs: TabsState::new(vec!["Board", "Console", "Help"]),
@@ -49,7 +49,9 @@ impl<'a> App<'a> {
             searching: false,
             in_moves_tree: false,
             moves_tree: StatefulTree::with_items(Vec::new()),
-        })
+        };
+        app.update_move_tree();
+        Ok(app)
     }
 
     fn update_move_tree(&mut self) {
