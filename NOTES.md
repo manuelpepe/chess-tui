@@ -32,7 +32,8 @@ Rank from index: (i * 8 + j) % 8
     - [x] Console
     - [x] MouseWheel
 - [ ] Improve `:move` parsing
-    - [x] Support castling
+    - [x] Support castling (0-0, 0-0-0 notation)
+    - [ ] Support castling (e1g1 notation)
     - [ ] Support en-pasant
     - [ ] Support non-queen promotion
 - [ ] Improve `Legal Moves` pane:
@@ -58,6 +59,9 @@ Rank from index: (i * 8 + j) % 8
     - [x] `:passturn`: pass turn
     - [x] `:flipboard`: flip board vertically
 - [ ] Migrate from `tui-rs` to `ratatui`
+- [ ] Add `tui-logger` to enable log dispatching from any module
+- [ ] Perform some tests from [Test-Positions](https://www.chessprogramming.org/Test-Positions) and [Engine Testing](https://www.chessprogramming.org/Engine_Testing#Notable_Bugs)
+- [ ] Hunt down panic scenarios
 
 ### Long-term
 
