@@ -310,6 +310,10 @@ impl Board {
     pub fn set_flipped(&mut self, flipped: bool) {
         self.flipped_board = flipped;
     }
+
+    pub fn get_history(&self) -> Vec<Move> {
+        self.state.history.clone()
+    }
 }
 
 impl Widget for Board {

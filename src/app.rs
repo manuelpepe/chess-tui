@@ -13,21 +13,35 @@ use tui_tree_widget::TreeItem;
 
 pub const INITIAL_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum SecondaryBoardPane {
+    None,
+    MovesTree,
+    History,
+}
+
 pub struct App<'a> {
     pub title: String,
     pub should_quit: bool,
-    pub tabs: TabsState<'a>,
+
     pub board: Board,
     pub flipped_board: bool,
+
     pub console: Console,
     pub in_console_input: bool,
+
     pub engine: &'a mut dyn ChessEngine,
     pub last_engine_eval: Evaluation,
     pub searching: bool,
+
     pub piece_to_grab: Option<Position>,
-    pub in_moves_tree: bool,
-    pub moves_tree: StatefulTree<'a>,
     pub help: HelpWindow,
+
+    pub tabs: TabsState<'a>,
+    pub moves_tree: StatefulTree<'a>,
+    pub history_tree: StatefulTree<'a>,
+
+    pub secondary_pane: SecondaryBoardPane,
 }
 
 /// Functional Implementations
@@ -49,12 +63,18 @@ impl<'a> App<'a> {
             last_engine_eval: Evaluation::default(),
             piece_to_grab: None,
             searching: false,
-            in_moves_tree: false,
             moves_tree: StatefulTree::with_items(Vec::new()),
+            history_tree: StatefulTree::with_items(Vec::new()),
             help: HelpWindow::new(),
+            secondary_pane: SecondaryBoardPane::None,
         };
-        app.update_move_tree();
+        app.update_trees();
         Ok(app)
+    }
+
+    fn update_trees(&mut self) {
+        self.update_move_tree();
+        self.update_history_tree();
     }
 
     fn update_move_tree(&mut self) {
@@ -66,13 +86,40 @@ impl<'a> App<'a> {
         self.moves_tree = StatefulTree::with_items(items);
     }
 
+    fn update_history_tree(&mut self) {
+        let history = self.board.get_history();
+        let chunks = history.chunks_exact(2);
+        let (len, remainder) = (chunks.len(), chunks.remainder());
+        let mut items = chunks
+            .enumerate()
+            .map(|(ix, movs)| {
+                TreeItem::new(
+                    format!("{}. ", ix),
+                    vec![
+                        TreeItem::new_leaf(movs[0].to_string()),
+                        TreeItem::new_leaf(movs[1].to_string()),
+                    ],
+                )
+            })
+            .collect::<Vec<_>>();
+        if remainder.len() == 1 {
+            let last = remainder[0];
+            items.push(TreeItem::new(
+                format!("{}. ", len),
+                vec![TreeItem::new_leaf(last.to_string())],
+            ));
+        }
+        self.history_tree = StatefulTree::with_items(items);
+        self.history_tree.last();
+    }
+
     async fn set_position(&mut self, fen: String) {
         match Board::from_fen(fen.clone()) {
             Ok(b) => {
                 self.board = b;
                 self.engine.set_position(fen.as_str()).await.unwrap();
                 self.restart_search().await.unwrap();
-                self.update_move_tree();
+                self.update_trees();
             }
             Err(err) => self
                 .console
@@ -117,6 +164,20 @@ impl<'a> App<'a> {
     fn flip_board(&mut self) {
         self.flipped_board = !self.flipped_board;
         self.board.set_flipped(self.flipped_board);
+    }
+
+    fn toggle_moves_tree(&mut self) {
+        self.secondary_pane = match self.secondary_pane {
+            SecondaryBoardPane::MovesTree => SecondaryBoardPane::None,
+            _ => SecondaryBoardPane::MovesTree,
+        }
+    }
+
+    fn toggle_history(&mut self) {
+        self.secondary_pane = match self.secondary_pane {
+            SecondaryBoardPane::History => SecondaryBoardPane::None,
+            _ => SecondaryBoardPane::History,
+        }
     }
 }
 
@@ -170,47 +231,59 @@ impl<'a> App<'a> {
 
     pub fn on_left(&mut self) {
         if self.in_console_input {
-            self.console.console.move_cursor(CursorMove::Back)
+            self.console.console.move_cursor(CursorMove::Back);
+            return;
         }
-        if self.in_moves_tree {
-            self.moves_tree.left()
+        match self.secondary_pane {
+            SecondaryBoardPane::MovesTree => self.moves_tree.left(),
+            SecondaryBoardPane::History => self.history_tree.left(),
+            _ => {}
         }
     }
 
     pub fn on_right(&mut self) {
         if self.in_console_input {
-            self.console.console.move_cursor(CursorMove::Forward)
+            self.console.console.move_cursor(CursorMove::Forward);
+            return;
         }
-        if self.in_moves_tree {
-            self.moves_tree.right()
+        match self.secondary_pane {
+            SecondaryBoardPane::MovesTree => self.moves_tree.right(),
+            SecondaryBoardPane::History => self.history_tree.right(),
+            _ => {}
         }
     }
 
     pub fn on_up(&mut self) {
+        if self.in_console_input {
+            self.console.move_history_backwards();
+            return;
+        }
         match self.tabs.index {
             1 => self.console.scroll((-1, 0)),
             2 => self.help.scroll((-1, 0)),
             _ => {}
         }
-        if self.in_console_input {
-            self.console.move_history_backwards()
-        }
-        if self.in_moves_tree {
-            self.moves_tree.up()
+        match self.secondary_pane {
+            SecondaryBoardPane::MovesTree => self.moves_tree.up(),
+            SecondaryBoardPane::History => self.history_tree.up(),
+            _ => {}
         }
     }
 
     pub fn on_down(&mut self) {
+        if self.in_console_input {
+            self.console.move_history_forwards();
+            return;
+        }
         match self.tabs.index {
             1 => self.console.scroll((1, 0)),
             2 => self.help.scroll((1, 0)),
             _ => {}
         }
-        if self.in_console_input {
-            self.console.move_history_forwards()
-        }
-        if self.in_moves_tree {
-            self.moves_tree.down()
+        match self.secondary_pane {
+            SecondaryBoardPane::MovesTree => self.moves_tree.down(),
+            SecondaryBoardPane::History => self.history_tree.down(),
+            _ => {}
         }
     }
 
@@ -221,7 +294,8 @@ impl<'a> App<'a> {
             ':' => self.focus_console(':'),
             '!' => self.focus_console('!'),
             'S' => self.set_position(INITIAL_POSITION.to_string()).await,
-            'M' => self.in_moves_tree = !self.in_moves_tree,
+            'M' => self.toggle_moves_tree(),
+            'H' => self.toggle_history(),
             'k' => self.on_up(),
             'j' => self.on_down(),
             'h' => self.on_left(),
@@ -251,11 +325,11 @@ impl<'a> App<'a> {
                 if let Err(err) = self.board.make_move(mov) {
                     self.console.log_line(format!("err: {}", err));
                 };
-                self.update_move_tree();
+                self.update_trees();
             }
             Command::PassTurn => {
                 self.board.pass_turn();
-                self.update_move_tree();
+                self.update_trees();
             }
             Command::FlipBoard => self.flip_board(),
         }
@@ -277,7 +351,7 @@ impl<'a> App<'a> {
                     Some(p) if p == pos => {
                         if self.board.has_grabbed_piece() && self.board.in_bounds(p) {
                             if (self.drop_piece(p).await).is_ok() {
-                                self.update_move_tree();
+                                self.update_trees();
                             };
                         } else if self.board.grab_piece(p).is_err() {
                             // tried to grab a piece that is not there
@@ -288,7 +362,7 @@ impl<'a> App<'a> {
                             && self.board.in_bounds(pos)
                             && (self.drop_piece(pos).await).is_ok()
                         {
-                            self.update_move_tree();
+                            self.update_trees();
                         };
                     }
                     None => {}

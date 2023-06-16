@@ -45,8 +45,8 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Track material imbalance
 - [ ] Move history
     - [x] Track moves
-    - [ ] Show in pane
-    - [ ] Traverse history
+    - [x] Show in pane
+    - [ ] Traverse history in the board
 - [ ] Settings 
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks

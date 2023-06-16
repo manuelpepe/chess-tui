@@ -90,9 +90,7 @@ impl Console {
                 self.reset();
                 self.set_active_cursor();
             }
-            Ordering::Greater => {
-                panic!("history in the future!")
-            }
+            Ordering::Greater => {}
         }
     }
 

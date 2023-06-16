@@ -9,7 +9,7 @@ use tui::{
 };
 use tui_tree_widget::Tree;
 
-use crate::app::App;
+use crate::app::{App, SecondaryBoardPane};
 
 pub fn draw<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
@@ -69,7 +69,26 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
 }
 
 pub fn draw_game_info<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
-    if app.in_moves_tree {
+    match app.secondary_pane {
+        SecondaryBoardPane::MovesTree => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+                .split(area);
+            draw_evaluation(f, app, chunks[0]);
+            draw_moves_tree(f, app, chunks[1]);
+        }
+        SecondaryBoardPane::History => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
+                .split(area);
+            draw_evaluation(f, app, chunks[0]);
+            draw_history(f, app, chunks[1]);
+        }
+        _ => draw_evaluation(f, app, area),
+    }
+    if app.secondary_pane == SecondaryBoardPane::MovesTree {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
@@ -96,6 +115,19 @@ pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) 
     );
     let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
+}
+
+pub fn draw_history<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
+    let items = Tree::new(app.history_tree.items.clone())
+        .block(Block::default().title("Move History").borders(Borders::ALL))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::LightGreen)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
+    f.render_stateful_widget(items, area, &mut app.history_tree.state);
 }
 
 pub fn draw_moves_tree<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
