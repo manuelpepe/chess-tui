@@ -179,6 +179,12 @@ impl<'a> App<'a> {
             _ => SecondaryBoardPane::History,
         }
     }
+
+    fn log_fen(&mut self) {
+        self.console
+            .log_line("FEN of current position:".to_string());
+        self.console.log_line(self.board.as_fen());
+    }
 }
 
 /// Trigger Implementations
@@ -332,6 +338,7 @@ impl<'a> App<'a> {
                 self.update_trees();
             }
             Command::FlipBoard => self.flip_board(),
+            Command::GetFen => self.log_fen(),
         }
     }
 

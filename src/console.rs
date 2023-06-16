@@ -125,6 +125,7 @@ pub enum CommandError {
 pub enum Command {
     Exit,
     SetPosition(String),
+    GetFen,
     StartSeach,
     StopSearch,
     MakeMove(ParsedMove),
@@ -134,23 +135,7 @@ pub enum Command {
 
 impl Command {
     pub fn from_string(command: String) -> Result<Self> {
-        let ch_cmd = Self::parse_char_cmd(command.clone());
-        if ch_cmd.is_ok() {
-            return ch_cmd;
-        }
         Self::parse_word_cmd(command)
-    }
-
-    fn parse_char_cmd(command: String) -> Result<Self> {
-        let ch = match command.chars().next() {
-            Some(c) => c,
-            None => bail!(CommandError::NoCommand),
-        };
-        let cmd = match ch {
-            '!' => Command::SetPosition(command[1..].to_string()),
-            _ => bail!(CommandError::InvalidCommand),
-        };
-        Ok(cmd)
     }
 
     fn parse_word_cmd(command: String) -> Result<Self> {
@@ -159,14 +144,13 @@ impl Command {
             None => bail!(CommandError::NoCommand),
         };
         let cmd = match word {
+            "!fen" => Command::GetFen,
             "exit" | ":q" => Command::Exit,
             ":passturn" => Command::PassTurn,
             ":flipboard" => Command::FlipBoard,
             ":search" => Command::StartSeach,
             ":stop" => Command::StopSearch,
-            ":set-position" if command.len() > 13 => {
-                Command::SetPosition(command[13..].to_string())
-            }
+            ":fen" if command.len() > 13 => Command::SetPosition(command[13..].to_string()),
             ":move" if command.len() > 6 => {
                 let mov = parse_algebraic_move(command[6..].to_string())?;
                 Command::MakeMove(mov)
