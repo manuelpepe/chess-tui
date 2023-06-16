@@ -24,9 +24,10 @@ Press `<TAB>` to move between windows, for more info see `Help` window.
 
 ## Commands
 
-To enter the command line press ':', then use any of:
+To enter the command line press `:`, then use any of:
 
-* `!<fen>` or `:set-position <fen>`: set a position on the board 
+* `!fen`: print current position as a FEN string in the console
+* `:fen <fen>`: set a position on the board 
 * `:search`: start searching current position
 * `:stop`: stop searching current position
 * `:move <mv>`: play move on the board. long algebraic notation is used (i.e. e2e4)

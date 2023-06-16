@@ -55,7 +55,8 @@ fn get_help() -> Vec<String> {
         ("<Enter>", "Execute command"),
         ("<LEFT/RIGHT>", "Move cursor"),
         ("<UP/DOWN>", "Traverse command history"),
-        ("!<fen>", "Set position on the board"),
+        ("!fen", "Print current position as FEN in the console (use F2 to toggle mouse capture and copy it)"),
+        (":fen <fen>", "Set position on the board"),
         (
             ":move <mv>",
             "Play move on the board. Long algebraic notation used (i.e. e2e4)",
@@ -69,9 +70,9 @@ fn get_help() -> Vec<String> {
     let legal_moves_shortcuts = [
         ("M", "Close legal moves pane"),
         ("<UP/DOWN> or k/j", "Change selected move"),
-        ("* <RIGHT/LEFT> or l/h", "Open or close group"),
-        ("* <ENTER>", "Make move on the board"),
-        ("* G", "Toggle move grouping"),
+        ("(wip) <RIGHT/LEFT> or l/h", "Open or close group"),
+        ("(wip) <ENTER>", "Make move on the board"),
+        ("(wip) G", "Toggle move grouping"),
     ];
     let shortcuts_help: Vec<Spans> = shortcuts
         .iter()
