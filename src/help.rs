@@ -42,6 +42,7 @@ fn get_help() -> Vec<String> {
     let shortcuts = [
         ("<TAB>", "Next window"),
         ("<UP/DOWN> or k/j or MouseWheel", "Scroll"),
+        ("F2", "Toggle mouse capture"),
         (":", "Enter console and buffer with :"),
         ("!", "Enter console and buffer with !"),
         ("M", "Open legal moves pane"),

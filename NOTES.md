@@ -51,9 +51,9 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks
 - [ ] Command work:
-    - [ ] `!fen`: get FEN of current position  (remove `:set-position`)
+    - [ ] `!fen`: get FEN of current position 
     - [ ] `!pgn`: get PGN of current move history
-    - [ ] `:fen <fen>`: set a position on the board
+    - [ ] `:fen <fen>`: set a position on the board (remove `:set-position`)
     - [ ] `:pgn <pgn>`: load pgn to move history
     - [x] `:passturn`: pass turn
     - [x] `:flipboard`: flip board vertically

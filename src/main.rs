@@ -6,7 +6,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{
-    io::{self, Stdout},
+    io::{self, Stdout, Write},
     time::{Duration, Instant},
 };
 use tokio::task::yield_now;
@@ -86,12 +86,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn run_app<B: Backend>(
+async fn run_app<B: Backend + Write>(
     terminal: &mut Terminal<B>,
     mut app: App<'_>,
     tick_rate: Duration,
 ) -> Result<()> {
     let mut last_tick = Instant::now();
+    let mut mouse_captured = true;
     loop {
         terminal.draw(|f| ui::draw(f, &mut app))?;
 
@@ -113,6 +114,15 @@ async fn run_app<B: Backend>(
                     KeyCode::Right => app.on_right(),
                     KeyCode::Up => app.on_up(),
                     KeyCode::Down => app.on_down(),
+                    KeyCode::F(2) => {
+                        if mouse_captured {
+                            execute!(terminal.backend_mut(), DisableMouseCapture)?;
+                            mouse_captured = false;
+                        } else {
+                            execute!(terminal.backend_mut(), EnableMouseCapture)?;
+                            mouse_captured = true;
+                        }
+                    }
                     _ => {}
                 },
                 Event::Mouse(event) => match event.kind {
