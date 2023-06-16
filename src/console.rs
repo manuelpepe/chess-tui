@@ -150,7 +150,7 @@ impl Command {
             ":flipboard" => Command::FlipBoard,
             ":search" => Command::StartSeach,
             ":stop" => Command::StopSearch,
-            ":fen" if command.len() > 13 => Command::SetPosition(command[13..].to_string()),
+            ":fen" if command.len() > 5 => Command::SetPosition(command[5..].to_string()),
             ":move" if command.len() > 6 => {
                 let mov = parse_algebraic_move(command[6..].to_string())?;
                 Command::MakeMove(mov)
