@@ -38,12 +38,15 @@ Rank from index: (i * 8 + j) % 8
 - [ ] Improve `Legal Moves` pane:
     - [ ] Make move by clicking enter
     - [ ] Toggle grouping by piece
-- [ ] Migrate from `tui-rs` to `ratatui`
+    - [ ] Highlight selected move on the board
 
 ### Mid-term
 
 - [ ] Track material imbalance
 - [ ] Move history
+    - [x] Track moves
+    - [ ] Show in pane
+    - [ ] Traverse history
 - [ ] Settings 
 - [ ] Clocks for playing
 - [ ] Parse FEN clocks
@@ -54,7 +57,7 @@ Rank from index: (i * 8 + j) % 8
     - [ ] `:pgn <pgn>`: load pgn to move history
     - [x] `:passturn`: pass turn
     - [x] `:flipboard`: flip board vertically
-
+- [ ] Migrate from `tui-rs` to `ratatui`
 
 ### Long-term
 

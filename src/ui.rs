@@ -64,7 +64,7 @@ pub fn draw_board<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(18), Constraint::Min(10)].as_ref())
         .split(chunks[0])[0];
-    f.render_widget(app.board, board_chunk);
+    f.render_widget(app.board.clone(), board_chunk);
     draw_game_info(f, app, chunks[1])
 }
 

@@ -31,7 +31,7 @@ pub enum BoardError {
     OutOfBounds,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct BoardState {
     pub board: [u8; 64],
     pub white_to_move: bool,
@@ -39,6 +39,7 @@ pub struct BoardState {
     pub last_move: Option<Move>,
     pub threatmap: [u8; 64],
     pub castling: CastleRights,
+    pub history: Vec<Move>,
 }
 
 impl BoardState {
@@ -51,6 +52,7 @@ impl BoardState {
             last_move: None,
             castling: fen.castling,
             threatmap: [0; 64],
+            history: Vec::new(),
         };
         state.update_threatmap();
         Ok(state)
@@ -76,12 +78,20 @@ impl BoardState {
         if !self.is_legal(&mov) {
             return Err(MoveError::IllegalMove { mov }.into());
         };
+        self.add_to_history(mov)?;
         self.move_piece(mov);
         if let Some(sm) = mov.castling {
             self.move_piece(Move::new(sm.0, sm.1));
         }
         self.update_castling_rights(&mov);
         self.pass_turn();
+        Ok(())
+    }
+
+    fn add_to_history(&mut self, mut mov: Move) -> Result<()> {
+        let piece = Piece::try_from(self.board[mov.from.as_ix() as usize])?;
+        mov.set_piece(piece);
+        self.history.push(mov);
         Ok(())
     }
 
@@ -156,16 +166,17 @@ impl BoardState {
     pub fn drop_piece(&mut self, ix: u8) -> Result<()> {
         match self.grabbed_piece {
             Some(grabbed) => {
-                let promotion = match Piece::try_from(self.board[grabbed as usize]) {
-                    Ok(Piece::BlackPawn) if ix > 55 => Some(Piece::BlackQueen),
-                    Ok(Piece::WhitePawn) if ix < 8 => Some(Piece::WhiteQueen),
+                let piece = Piece::try_from(self.board[grabbed as usize])?;
+                let promotion = match piece {
+                    Piece::BlackPawn if ix > 55 => Some(Piece::BlackQueen),
+                    Piece::WhitePawn if ix < 8 => Some(Piece::WhiteQueen),
                     _ => None,
                 };
-                let castling = match Piece::try_from(self.board[grabbed as usize]) {
-                    Ok(Piece::BlackKing) if grabbed == 4 && ix == 6 => Some((7, 5)),
-                    Ok(Piece::BlackKing) if grabbed == 4 && ix == 2 => Some((0, 3)),
-                    Ok(Piece::WhiteKing) if grabbed == 60 && ix == 62 => Some((63, 61)),
-                    Ok(Piece::WhiteKing) if grabbed == 60 && ix == 58 => Some((56, 59)),
+                let castling = match piece {
+                    Piece::BlackKing if grabbed == 4 && ix == 6 => Some((7, 5)),
+                    Piece::BlackKing if grabbed == 4 && ix == 2 => Some((0, 3)),
+                    Piece::WhiteKing if grabbed == 60 && ix == 62 => Some((63, 61)),
+                    Piece::WhiteKing if grabbed == 60 && ix == 58 => Some((56, 59)),
                     _ => None,
                 };
                 let castling = castling
@@ -215,7 +226,7 @@ impl BoardState {
     }
 
     pub fn get_legal_moves(&self) -> Vec<Move> {
-        let mut copy = *self;
+        let mut copy = self.clone();
         let moves = copy.get_all_moves();
         moves
             .into_iter()
@@ -246,7 +257,7 @@ impl BoardState {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Board {
     state: BoardState,
     flipped_board: bool,
@@ -377,7 +388,7 @@ impl Board {
                     Ok(p) => p,
                     Err(_e) => return highlights,
                 };
-                let mut copy = self.state;
+                let mut copy = self.state.clone();
                 piece
                     .get_moves(
                         &self.state.board,
@@ -451,6 +462,7 @@ pub struct Move {
     pub promotion: Option<Piece>,
     pub en_passant: Option<Position>,
     pub castling: Option<AuxMove>,
+    pub piece: Option<Piece>,
 }
 
 impl Move {
@@ -467,6 +479,7 @@ impl Move {
             promotion,
             en_passant,
             castling,
+            piece: None,
         }
     }
     pub fn new(from: Position, to: Position) -> Move {
@@ -486,27 +499,32 @@ impl Move {
     }
 
     pub fn castle_long(white_to_move: bool) -> Move {
-        let f = match white_to_move {
-            true => 0,
-            false => 7,
-        };
-        let king = Position::Algebraic { rank: 4, file: f };
-        let rook = Position::Algebraic { rank: 0, file: f };
-        let king_to = Position::Algebraic { rank: 2, file: f };
-        let rook_to = Position::Algebraic { rank: 3, file: f };
+        let file = Move::get_king_file(white_to_move);
+        let king = Position::Algebraic { rank: 4, file };
+        let rook = Position::Algebraic { rank: 0, file };
+        let king_to = Position::Algebraic { rank: 2, file };
+        let rook_to = Position::Algebraic { rank: 3, file };
         Move::new_castling(king, king_to, (rook, rook_to))
     }
 
     pub fn castle_short(white_to_move: bool) -> Move {
-        let f = match white_to_move {
-            true => 0,
-            false => 7,
-        };
-        let king = Position::Algebraic { rank: 4, file: f };
-        let rook = Position::Algebraic { rank: 7, file: f };
-        let king_to = Position::Algebraic { rank: 6, file: f };
-        let rook_to = Position::Algebraic { rank: 5, file: f };
+        let file = Move::get_king_file(white_to_move);
+        let king = Position::Algebraic { rank: 4, file };
+        let rook = Position::Algebraic { rank: 7, file };
+        let king_to = Position::Algebraic { rank: 6, file };
+        let rook_to = Position::Algebraic { rank: 5, file };
         Move::new_castling(king, king_to, (rook, rook_to))
+    }
+
+    fn get_king_file(white_to_move: bool) -> u8 {
+        match white_to_move {
+            true => 4,
+            false => 7,
+        }
+    }
+
+    pub fn set_piece(&mut self, piece: Piece) {
+        self.piece = Some(piece);
     }
 }
 
