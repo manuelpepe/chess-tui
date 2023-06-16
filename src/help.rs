@@ -41,10 +41,11 @@ fn get_help() -> Vec<String> {
     // Otherwise this should be simplified to just a vector of strings.
     let shortcuts = [
         ("<TAB>", "Next window"),
-        ("* <UP/DOWN> or k/j", "Scroll"),
+        ("<UP/DOWN> or k/j or MouseWheel", "Scroll"),
         (":", "Enter console and buffer with :"),
         ("!", "Enter console and buffer with !"),
         ("M", "Open legal moves pane"),
+        ("H", "Open move history pane"),
         ("S", "Set starting position on the board"),
         ("q", "Quit"),
     ];
@@ -102,7 +103,9 @@ fn get_help() -> Vec<String> {
         })
         .collect();
     let mut text = Vec::new();
-    text.extend(iter::once(Spans::from("<< Scroll with UP/DOWN/j/k >>")));
+    text.extend(iter::once(Spans::from(
+        "<< Scroll with UP/DOWN/j/k/MouseWheel >>",
+    )));
     text.extend(iter::once(Spans::from("")));
     text.extend(iter::once(Spans::from("General:")));
     text.extend(shortcuts_help);
