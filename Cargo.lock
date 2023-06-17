@@ -118,6 +118,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "chess-tui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "async-uci",
+ "clap",
+ "crossterm 0.26.1",
+ "thiserror",
+ "tokio",
+ "tui",
+ "tui-textarea",
+ "tui-tree-widget",
+]
+
+[[package]]
 name = "clap"
 version = "4.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -547,22 +563,6 @@ checksum = "af6ca306e86e263aa6dede6305d7d305dea942bde622d4f4910782434d0b98cb"
 dependencies = [
  "tui",
  "unicode-width",
-]
-
-[[package]]
-name = "tui_chess"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "async-uci",
- "clap",
- "crossterm 0.26.1",
- "thiserror",
- "tokio",
- "tui",
- "tui-textarea",
- "tui-tree-widget",
 ]
 
 [[package]]
