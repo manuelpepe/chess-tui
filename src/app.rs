@@ -117,8 +117,7 @@ impl<'a> App<'a> {
         match Board::from_fen(fen.clone()) {
             Ok(b) => {
                 self.board = b;
-                self.engine.set_position(fen.as_str()).await.unwrap();
-                self.restart_search().await.unwrap();
+                self.update_engine_position().await.unwrap();
                 self.update_trees();
             }
             Err(err) => self
@@ -129,17 +128,19 @@ impl<'a> App<'a> {
 
     async fn drop_piece(&mut self, pos: Position) -> Result<()> {
         match self.board.drop_piece(pos) {
-            Ok(_) => {
-                let fen = self.board.as_fen();
-                self.engine.set_position(fen.as_str()).await?;
-                self.restart_search().await?;
-                Ok(())
-            }
+            Ok(_) => self.update_engine_position().await,
             Err(err) => {
                 self.console.log_line(format!("err: {}", err));
                 Err(err)
             }
         }
+    }
+
+    async fn update_engine_position(&mut self) -> Result<()> {
+        let fen = self.board.as_fen();
+        self.engine.set_position(fen.as_str()).await?;
+        self.restart_search().await?;
+        Ok(())
     }
 
     async fn restart_search(&mut self) -> Result<()> {
@@ -331,6 +332,7 @@ impl<'a> App<'a> {
                 if let Err(err) = self.board.make_move(mov) {
                     self.console.log_line(format!("err: {}", err));
                 };
+                self.update_engine_position().await.unwrap();
                 self.update_trees();
             }
             Command::PassTurn => {
