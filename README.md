@@ -2,6 +2,8 @@
 
 A terminal-based chess interface.
 
+<img src="assets/demo.gif" width="70%" alt="Chess TUI Demo"/>
+
 
 ## Features
 
