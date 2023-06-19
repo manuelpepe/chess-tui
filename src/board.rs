@@ -522,7 +522,7 @@ impl Move {
 
     fn get_king_file(white_to_move: bool) -> u8 {
         match white_to_move {
-            true => 4,
+            true => 0,
             false => 7,
         }
     }
