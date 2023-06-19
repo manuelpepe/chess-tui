@@ -88,16 +88,6 @@ pub fn draw_game_info<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
         }
         _ => draw_evaluation(f, app, area),
     }
-    if app.secondary_pane == SecondaryBoardPane::MovesTree {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)].as_ref())
-            .split(area);
-        draw_evaluation(f, app, chunks[0]);
-        draw_moves_tree(f, app, chunks[1]);
-    } else {
-        draw_evaluation(f, app, area);
-    }
 }
 
 pub fn draw_evaluation<B: Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
