@@ -33,7 +33,7 @@ Rank from index: (i * 8 + j) % 8
     - [x] MouseWheel
 - [ ] Improve `:move` parsing
     - [x] Support castling (0-0, 0-0-0 notation)
-    - [ ] Support castling (e1g1 notation)
+    - [x] Support castling (e1g1 notation)
     - [ ] Support en-pasant
     - [ ] Support non-queen promotion
 - [ ] Improve `Legal Moves` pane:

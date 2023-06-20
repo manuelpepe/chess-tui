@@ -177,6 +177,13 @@ fn parse_algebraic_move(mov: String) -> Result<ParsedMove> {
     if mov == "0-0-0" || mov == "O-O-O" {
         return Ok(ParsedMove::CastleLong);
     }
+    let (pfrom, pto) = parse_move_values(mov)?;
+    Ok(ParsedMove::Basic {
+        mov: Move::new_with_all(pfrom, pto, None, None, get_castle_component(pfrom, pto)),
+    })
+}
+
+fn parse_move_values(mov: &str) -> Result<(Position, Position)> {
     let values = mov
         .chars()
         .take(4)
@@ -190,16 +197,33 @@ fn parse_algebraic_move(mov: String) -> Result<ParsedMove> {
         let mov = mov.to_string();
         return Err(CommandError::MoveParsingError { mov }.into());
     }
-    Ok(ParsedMove::Basic {
-        mov: Move::new(
-            Position::Algebraic {
-                rank: values[0],
-                file: values[1],
-            },
-            Position::Algebraic {
-                rank: values[2],
-                file: values[3],
-            },
-        ),
-    })
+    let pos_from = Position::Algebraic {
+        rank: values[0],
+        file: values[1],
+    };
+    let pos_to = Position::Algebraic {
+        rank: values[2],
+        file: values[3],
+    };
+    Ok((pos_from, pos_to))
+}
+
+fn get_castle_component(pfrom: Position, pto: Position) -> Option<(Position, Position)> {
+    let (w_qsrook, w_ksrook) = (Position::Index { ix: 56 }, Position::Index { ix: 63 });
+    let (b_qsrook, b_ksrook) = (Position::Index { ix: 0 }, Position::Index { ix: 7 });
+    match pfrom.as_ix() {
+        // white
+        60 => match pto.as_ix() {
+            62 => Some((w_ksrook, Position::Index { ix: 61 })),
+            58 => Some((w_qsrook, Position::Index { ix: 59 })),
+            _ => None,
+        },
+        // black
+        4 => match pto.as_ix() {
+            6 => Some((b_ksrook, Position::Index { ix: 5 })),
+            2 => Some((b_qsrook, Position::Index { ix: 3 })),
+            _ => None,
+        },
+        _ => None,
+    }
 }
